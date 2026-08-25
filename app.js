@@ -1,270 +1,532 @@
 (() => {
   'use strict';
 
-  const STORAGE_KEY = 'heavenlyParticipationDB_v1';
-  const SETTINGS_KEY = 'heavenlyParticipationSettings_v1';
-  const METRICS = ['education', 'cleaning', 'evangelism', 'finance'];
+  const STORAGE_KEY = 'heavenlySchoolPerformanceDB_v2';
+  const SETTINGS_KEY = 'heavenlySchoolPerformanceSettings_v2';
+  const METRICS = ['education', 'service', 'cleaning', 'finance'];
   const TITLES = {
-    dashboard: ['OVERVIEW', 'Dashboard'], education: ['WEEKLY INPUT', 'Education'], cleaning: ['WEEKLY INPUT', 'Cleaning Meeting'],
-    evangelism: ['WEEKLY INPUT', 'Evangelism'], finance: ['MONTHLY INPUT', 'Tithe & Group Fees'], people: ['ROSTER', 'Workers'], records: ['HISTORY', 'All Records'], settings: ['SYSTEM', 'Settings']
+    dashboard: ['OVERVIEW', 'Dashboard'], education: ['WEEKLY INPUT', 'Weekly Education'], service: ['ATTENDANCE', 'Service Attendance'],
+    cleaning: ['WEEKLY INPUT', 'Cleaning Meeting'], finance: ['MONTHLY INPUT', 'Tithe & Offering'], people: ['STRUCTURE', 'Workers & Cells'],
+    reports: ['ANALYSIS', 'Reports'], records: ['HISTORY', 'All Records'], settings: ['SYSTEM', 'Settings']
   };
+
+  const DEFAULT_STRUCTURE = [
+    ['Cell 1', ['Ngombongangani Ngubane', 'Patrick Zuma', 'Mbali Ngema', 'Mfundo Mchunu']],
+    ['Cell 2', ['Ernest Mbedzi', 'Ntobeko Mzobe', 'Nonkululeko Madlala']],
+    ['Cell 3', ['Nkanyiso Qwabe', 'Enhle Ngcobo', 'Khwezi Khanyeza', 'Bongiwe Dlamini', 'Sharon Ngcobo']],
+    ['Cell 04', ['Simamkele Mfingwana', 'Alungile Gqola', 'Phumelele Lembethe', 'Brian Zuma', 'Zintle Dwabayo']],
+    ['Cell 05', ['Sicelo Malinga', 'Thuthukile Buthelezi', 'Sinegugu Ngxongxela', 'Sinethemba Ngcobo']],
+    ['Cell 06', ['Mholi Makhanya', 'Arinao Nelwamondo', 'Kyle Hendricks', 'Lindiwe Jack']],
+    ['Cell 7', ['Lindiwe Msimanga', 'Lungile Ngobese', 'Thandokuhle Makhathini', 'Nompumelelo Mkhize', 'Mbali Dlamini']]
+  ];
+
   const $ = s => document.querySelector(s);
   const $$ = s => [...document.querySelectorAll(s)];
-  const today = () => new Date().toISOString().slice(0, 10);
-  const monthNow = () => new Date().toISOString().slice(0, 7);
-  const uid = prefix => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const esc = v => String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
-  const pct = (num, den) => den ? Math.round((num / den) * 100) : 0;
   const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+  const pct = (num, den) => den ? Math.round((num / den) * 100) : 0;
+  const uid = prefix => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const localISO = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const today = () => localISO(new Date());
+  const monthNow = () => today().slice(0,7);
 
   let db = loadLocal();
   let settings = loadSettings();
   let charts = {};
   let currentView = 'dashboard';
   let visibleRecordsCache = [];
+  let reportRowsCache = [];
 
   function createPeople() {
-    return Array.from({ length: 30 }, (_, i) => ({
-      id: `P${String(i + 1).padStart(2, '0')}`,
-      name: `Worker ${String(i + 1).padStart(2, '0')}`,
-      group: `Group ${Math.floor(i / 10) + 1}`,
-      active: true,
-      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
-    }));
+    const now = new Date().toISOString();
+    const rows = [];
+    DEFAULT_STRUCTURE.forEach(([cell, names], cellIndex) => names.forEach((name, personIndex) => rows.push({
+      id: `C${String(cellIndex + 1).padStart(2,'0')}-${String(personIndex + 1).padStart(2,'0')}`,
+      name, cell, active: true, createdAt: now, updatedAt: now
+    })));
+    return rows;
   }
 
-  function emptyDB() { return { people: createPeople(), education: [], cleaning: [], evangelism: [], finance: [] }; }
+  function emptyDB() { return { people: createPeople(), education: [], service: [], cleaning: [], finance: [] }; }
+
   function loadLocal() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      const parsed = raw ? JSON.parse(raw) : null;
+      const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
       if (!parsed || !Array.isArray(parsed.people)) return emptyDB();
       METRICS.forEach(k => { if (!Array.isArray(parsed[k])) parsed[k] = []; });
       return parsed;
     } catch { return emptyDB(); }
   }
+
   function loadSettings() {
     try { return { apiUrl: '', apiKey: '', autoSync: true, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; }
     catch { return { apiUrl: '', apiKey: '', autoSync: true }; }
   }
+
   function saveLocal() { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); }
   function saveSettingsLocal() { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }
   function activePeople() { return db.people.filter(p => p.active !== false); }
-  function personById(id) { return db.people.find(p => p.id === id) || { name: id, group: '' }; }
-  function dateWithin(date, from, to) {
-    if (!date) return true;
-    const d = date.slice(0,10); return (!from || d >= from) && (!to || d <= to);
-  }
-  function recordDate(metric, r) { return metric === 'finance' ? `${r.month || ''}-01` : (r.date || r.weekDate || ''); }
+  function personById(id) { return db.people.find(p => p.id === id) || { id, name: id, cell: '' }; }
+  function cellNames() { return [...new Set(activePeople().map(p => p.cell).filter(Boolean))].sort(cellSort); }
+  function cellSort(a,b) { return Number((a.match(/\d+/)||[999])[0]) - Number((b.match(/\d+/)||[999])[0]) || a.localeCompare(b); }
+  function dateWithin(date, from, to) { if (!date) return false; const d = String(date).slice(0,10); return (!from || d >= from) && (!to || d <= to); }
+  function recordDate(metric, r) { return metric === 'finance' ? `${r.month || ''}-01` : (r.date || ''); }
+  function metricLabel(metric) { return ({education:'Education',service:'Service',cleaning:'Cleaning',finance:'Tithe & Offering'})[metric] || cap(metric); }
+  function positive(metric, status) { return metric === 'finance' ? status === 'Submitted' : status === 'Present'; }
+  function validStatus(status) { return !!status && status !== 'Excused' && status !== 'Not recorded'; }
+  function initials(name) { return String(name || '').split(/\s+/).filter(Boolean).slice(0,2).map(x => x[0]).join('').toUpperCase(); }
+  function shortName(name) { const p=String(name||'').split(/\s+/); return p.length > 2 ? p.slice(0,2).join(' ') : name; }
+  function monthLabel(m) { if(!m) return ''; const [y,mo]=m.split('-'); return new Date(Number(y), Number(mo)-1, 1).toLocaleString('en-ZA',{month:'short',year:'2-digit'}); }
+  function scoreClass(score) { return score >= 80 ? 'good' : score >= 60 ? 'warn' : 'bad'; }
+  function emptyRow(cols, text='No workers match this filter.') { return `<tr><td colspan="${cols}" class="empty-state">${esc(text)}</td></tr>`; }
 
   function init() {
-    setDefaultDates(); bindNavigation(); bindGeneral(); bindEntryActions(); bindSettings(); updateConnectionUI();
+    setDefaultDates();
+    bindNavigation();
+    bindGeneral();
+    bindEntryActions();
+    bindReports();
+    bindSettings();
+    updateConnectionUI();
     renderAll();
     if (settings.apiUrl && settings.apiKey) syncFromRemote(false);
   }
 
   function setDefaultDates() {
-    ['educationDate','cleaningDate','evangelismDate'].forEach(id => { const el = $(`#${id}`); if (el) el.value = today(); });
+    ['educationDate','serviceDate','cleaningDate'].forEach(id => $(`#${id}`).value = today());
     $('#financeMonth').value = monthNow();
-    const d = new Date(); d.setDate(d.getDate() - 28); $('#filterFrom').value = d.toISOString().slice(0,10); $('#filterTo').value = today();
+    const d = new Date(); d.setDate(d.getDate() - 28);
+    ['filterFrom','reportFrom'].forEach(id => $(`#${id}`).value = localISO(d));
+    ['filterTo','reportTo'].forEach(id => $(`#${id}`).value = today());
   }
 
   function bindNavigation() {
     $$('.nav-item').forEach(btn => btn.addEventListener('click', () => goTo(btn.dataset.view)));
     $$('[data-jump]').forEach(btn => btn.addEventListener('click', () => goTo(btn.dataset.jump)));
     $('#menuButton').addEventListener('click', () => $('#sidebar').classList.toggle('open'));
-    document.addEventListener('click', e => { if (innerWidth <= 900 && !e.target.closest('.sidebar') && !e.target.closest('#menuButton')) $('#sidebar').classList.remove('open'); });
+    document.addEventListener('click', e => { if (innerWidth <= 1000 && !e.target.closest('.sidebar') && !e.target.closest('#menuButton')) $('#sidebar').classList.remove('open'); });
   }
 
   function goTo(view) {
     currentView = view;
     $$('.view').forEach(v => v.classList.toggle('active', v.id === `view-${view}`));
     $$('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.view === view));
-    $('#pageEyebrow').textContent = TITLES[view][0]; $('#pageTitle').textContent = TITLES[view][1];
+    $('#pageEyebrow').textContent = TITLES[view][0];
+    $('#pageTitle').textContent = TITLES[view][1];
     $('#sidebar').classList.remove('open');
     if (view === 'dashboard') renderDashboard();
+    if (view === 'reports') renderReports();
     if (view === 'records') renderRecords();
   }
 
   function bindGeneral() {
     $('#refreshButton').addEventListener('click', () => settings.apiUrl && settings.apiKey ? syncFromRemote(true) : (renderAll(), toast('Dashboard refreshed.')));
-    $('#globalSearch').addEventListener('input', e => { $('#dashboardSearch').value = e.target.value; if (currentView !== 'dashboard') goTo('dashboard'); renderDashboard(); });
-    ['filterFrom','filterTo','filterGroup','dashboardSearch'].forEach(id => $(`#${id}`).addEventListener('input', renderDashboard));
-    $('#clearFiltersButton').addEventListener('click', () => { $('#filterFrom').value=''; $('#filterTo').value=''; $('#filterGroup').value='all'; $('#dashboardSearch').value=''; $('#globalSearch').value=''; renderDashboard(); });
-    ['educationSearch','cleaningSearch','evangelismSearch','financeSearch'].forEach(id => $(`#${id}`).addEventListener('input', () => renderEntry(id.replace('Search',''))));
-    ['educationDate','educationSession','cleaningDate','cleaningSession','evangelismDate','financeMonth'].forEach(id => $(`#${id}`).addEventListener('change', () => renderEntry(id.replace(/Date|Session|Month/,'').toLowerCase())));
+    $('#globalSearch').addEventListener('input', () => { if (currentView !== 'dashboard') goTo('dashboard'); else renderDashboard(); });
+    ['filterFrom','filterTo','filterWorker'].forEach(id => $(`#${id}`).addEventListener('input', renderDashboard));
+    $('#filterCell').addEventListener('change', () => { fillWorkerSelect('#filterWorker', $('#filterCell').value); $('#filterWorker').value='all'; renderDashboard(); });
+    $('#clearFiltersButton').addEventListener('click', () => { $('#filterFrom').value=''; $('#filterTo').value=''; $('#filterCell').value='all'; fillWorkerSelect('#filterWorker','all'); $('#filterWorker').value='all'; $('#globalSearch').value=''; renderDashboard(); });
+
+    ['education','service','cleaning','finance'].forEach(metric => {
+      $(`#${metric}Search`).addEventListener('input', () => renderEntry(metric));
+      $(`#${metric}Cell`).addEventListener('change', () => renderEntry(metric));
+    });
+    ['educationDate','educationSession','serviceDate','serviceSession','cleaningDate','cleaningSession','financeMonth'].forEach(id => {
+      const metric = id.startsWith('education') ? 'education' : id.startsWith('service') ? 'service' : id.startsWith('cleaning') ? 'cleaning' : 'finance';
+      $(`#${id}`).addEventListener('change', () => renderEntry(metric));
+    });
     $('#peopleSearch').addEventListener('input', renderPeople);
-    ['recordsMetric','recordsFrom','recordsTo','recordsSearch'].forEach(id => $(`#${id}`).addEventListener('input', renderRecords));
-    $('#exportBackupButton').addEventListener('click', exportBackup); $('#settingsExport').addEventListener('click', exportBackup); $('#exportCsvButton').addEventListener('click', exportVisibleCSV);
+
+    ['recordsMetric','recordsFrom','recordsTo','recordsCell','recordsSearch'].forEach(id => $(`#${id}`).addEventListener('input', renderRecords));
+    $('#exportVisibleCsv').addEventListener('click', exportVisibleRecordsCSV);
+    $('#exportRecordsExcel').addEventListener('click', exportVisibleRecordsExcel);
+    $$('.chart-export').forEach(btn => btn.addEventListener('click', () => exportChartPNG(btn.dataset.chart)));
   }
 
   function bindEntryActions() {
-    $('#educationMarkAll').addEventListener('click', () => markAll('#educationBody', '.status-select', 'Present'));
-    $('#cleaningMarkAll').addEventListener('click', () => markAll('#cleaningBody', '.status-select', 'Present'));
-    $('#evangelismMarkAll').addEventListener('click', () => markAll('#evangelismBody', '.status-select', 'Participated'));
+    $('#educationMarkAll').addEventListener('click', () => markAll('#educationBody', 'Present'));
+    $('#serviceMarkAll').addEventListener('click', () => markAll('#serviceBody', 'Present'));
+    $('#cleaningMarkAll').addEventListener('click', () => markAll('#cleaningBody', 'Present'));
+    $('#financeMarkAll').addEventListener('click', () => markAll('#financeBody', 'Submitted'));
     $('#saveEducation').addEventListener('click', () => saveAttendanceBatch('education'));
+    $('#saveService').addEventListener('click', () => saveAttendanceBatch('service'));
     $('#saveCleaning').addEventListener('click', () => saveAttendanceBatch('cleaning'));
-    $('#saveEvangelism').addEventListener('click', saveEvangelismBatch);
     $('#saveFinance').addEventListener('click', saveFinanceBatch);
     $('#savePeople').addEventListener('click', savePeopleRoster);
-    $('#resetPeople').addEventListener('click', () => { if (confirm('Reset the roster to 30 placeholder workers? Existing participation records will remain linked to the same worker IDs.')) { db.people=createPeople(); saveLocal(); renderAll(); toast('Roster reset.', 'success'); } });
+    $('#restoreStructure').addEventListener('click', restoreStructure);
     $('#recordsBody').addEventListener('click', e => { const btn = e.target.closest('[data-delete]'); if (btn) deleteRecord(btn.dataset.metric, btn.dataset.delete); });
   }
 
-  function markAll(bodySelector, inputSelector, value) {
-    $$(bodySelector + ' ' + inputSelector).forEach(el => { el.value = value; el.dispatchEvent(new Event('change')); });
+  function bindReports() {
+    ['reportView','reportFrom','reportTo','reportWorker'].forEach(id => $(`#${id}`).addEventListener('input', renderReports));
+    $('#reportCell').addEventListener('change', () => { fillWorkerSelect('#reportWorker', $('#reportCell').value); $('#reportWorker').value='all'; renderReports(); });
+    $('#exportReportCsv').addEventListener('click', exportReportCSV);
+    $('#exportExcelButton').addEventListener('click', () => exportExcelWorkbook(true));
+    $('#exportReportChart').addEventListener('click', () => exportChartPNG('reportChart'));
+  }
+
+  function bindSettings() {
+    $('#apiUrl').value = settings.apiUrl;
+    $('#apiKey').value = settings.apiKey;
+    $('#autoSync').checked = settings.autoSync;
+    $('#saveConnection').addEventListener('click', async () => {
+      settings.apiUrl = $('#apiUrl').value.trim(); settings.apiKey = $('#apiKey').value.trim(); settings.autoSync = $('#autoSync').checked; saveSettingsLocal();
+      if (!settings.apiUrl || !settings.apiKey) { updateConnectionUI(false); return toast('Enter both the Web App URL and API key.', 'error'); }
+      await syncFromRemote(true);
+    });
+    $('#disconnectButton').addEventListener('click', () => {
+      settings.apiUrl=''; settings.apiKey=''; saveSettingsLocal(); $('#apiUrl').value=''; $('#apiKey').value=''; updateConnectionUI(false); $('#settingsStatus').textContent='Local browser mode enabled.'; toast('Disconnected from Google Sheets.','success');
+    });
+    $('#autoSync').addEventListener('change', e => { settings.autoSync=e.target.checked; saveSettingsLocal(); });
+    $('#settingsExportJson').addEventListener('click', exportBackup);
+    $('#settingsExportExcel').addEventListener('click', () => exportExcelWorkbook(false));
+    $('#importBackupInput').addEventListener('change', importBackup);
+    $('#importExcelInput').addEventListener('change', importExcelWorkbook);
   }
 
   function renderAll() {
-    renderGroups(); renderPeople(); ['education','cleaning','evangelism','finance'].forEach(renderEntry); renderDashboard(); renderRecords();
+    renderSelects();
+    renderPeople();
+    METRICS.forEach(renderEntry);
+    renderDashboard();
+    renderReports();
+    renderRecords();
+    $('#heroWorkerCount').textContent = `${activePeople().length} workers`;
   }
 
-  function renderGroups() {
-    const groups = [...new Set(activePeople().map(p => p.group).filter(Boolean))].sort();
-    const current = $('#filterGroup').value;
-    $('#filterGroup').innerHTML = '<option value="all">All groups</option>' + groups.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('');
-    if ([...$('#filterGroup').options].some(o => o.value === current)) $('#filterGroup').value = current;
+  function renderSelects() {
+    const cells = cellNames();
+    const targets = ['#filterCell','#educationCell','#serviceCell','#cleaningCell','#financeCell','#reportCell','#recordsCell'];
+    targets.forEach(sel => {
+      const el=$(sel); const current=el.value;
+      el.innerHTML = `<option value="all">${sel==='#filterCell'?'Whole school':'All cells'}</option>` + cells.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+      if ([...el.options].some(o=>o.value===current)) el.value=current;
+    });
+    fillWorkerSelect('#filterWorker', $('#filterCell').value || 'all');
+    fillWorkerSelect('#reportWorker', $('#reportCell').value || 'all');
   }
 
-  function getRosterFiltered(search) {
-    const q = (search || '').trim().toLowerCase();
-    return activePeople().filter(p => !q || `${p.name} ${p.group}`.toLowerCase().includes(q));
+  function fillWorkerSelect(selector, cell='all') {
+    const el=$(selector); const current=el.value;
+    const people=activePeople().filter(p=>cell==='all'||p.cell===cell).sort((a,b)=>a.name.localeCompare(b.name));
+    el.innerHTML='<option value="all">All workers</option>'+people.map(p=>`<option value="${esc(p.id)}">${esc(p.name)} — ${esc(p.cell)}</option>`).join('');
+    if ([...el.options].some(o=>o.value===current)) el.value=current;
+  }
+
+  function filteredRoster(cell, search='') {
+    const q=String(search||'').trim().toLowerCase();
+    return activePeople().filter(p => (cell==='all'||p.cell===cell) && (!q || `${p.name} ${p.cell}`.toLowerCase().includes(q)));
   }
 
   function renderEntry(metric) {
-    if (!METRICS.includes(metric)) return;
-    if (metric === 'education' || metric === 'cleaning') renderAttendanceEntry(metric);
-    if (metric === 'evangelism') renderEvangelismEntry();
-    if (metric === 'finance') renderFinanceEntry();
+    if (metric === 'finance') return renderFinanceEntry();
+    renderAttendanceEntry(metric);
   }
 
-  function statusOptions(value, evangelism=false) {
-    const opts = evangelism ? ['', 'Participated', 'Did not participate', 'Excused'] : ['', 'Present', 'Absent', 'Excused'];
-    return opts.map(o => `<option value="${esc(o)}" ${o===value?'selected':''}>${o || 'Not recorded'}</option>`).join('');
+  function statusOptions(value, metric='attendance') {
+    const opts = metric==='finance' ? ['', 'Submitted', 'Not submitted', 'Excused'] : ['', 'Present', 'Absent', 'Excused'];
+    return opts.map(o=>`<option value="${esc(o)}" ${o===value?'selected':''}>${o || 'Not recorded'}</option>`).join('');
   }
 
   function renderAttendanceEntry(metric) {
-    const date = $(`#${metric}Date`).value, session = $(`#${metric}Session`).value, search = $(`#${metric}Search`).value;
-    const rows = getRosterFiltered(search); const body = $(`#${metric}Body`);
-    body.innerHTML = rows.map((p,i) => {
-      const existing = db[metric].find(r => r.personId===p.id && r.date===date && r.session===session) || {};
-      const cls = (existing.status || '').toLowerCase();
-      return `<tr data-person-id="${p.id}"><td>${i+1}</td><td><div class="worker-cell"><div class="avatar">${initials(p.name)}</div><div><strong>${esc(p.name)}</strong><small>${esc(p.id)}</small></div></div></td><td>${esc(p.group||'—')}</td><td><select class="status-select ${cls}">${statusOptions(existing.status)}</select></td><td><input class="note-input" value="${esc(existing.note||'')}" placeholder="Optional note"></td></tr>`;
+    const date=$(`#${metric}Date`).value, session=$(`#${metric}Session`).value, cell=$(`#${metric}Cell`).value, search=$(`#${metric}Search`).value;
+    const rows=filteredRoster(cell,search), body=$(`#${metric}Body`);
+    body.innerHTML = rows.map((p,i)=>{
+      const r=db[metric].find(x=>x.personId===p.id&&x.date===date&&x.session===session)||{};
+      return `<tr data-person-id="${esc(p.id)}"><td>${i+1}</td><td><div class="worker-cell"><div class="avatar">${initials(p.name)}</div><div><strong>${esc(p.name)}</strong><small>${esc(p.id)}</small></div></div></td><td>${esc(p.cell)}</td><td><select class="status-select ${statusClass(r.status)}">${statusOptions(r.status)}</select></td><td><input class="note-input" type="text" value="${esc(r.note||'')}" placeholder="Optional note"></td></tr>`;
     }).join('') || emptyRow(5);
     bindStatusColors(body);
-    const saved = db[metric].filter(r=>r.date===date&&r.session===session&&r.status).length;
-    $(`#${metric}Summary`).innerHTML = `<span class="summary-chip"><span class="summary-dot good"></span>${saved} saved for ${esc(session)}</span><span>${rows.length} workers shown</span><span>${esc(date || 'Choose a date')}</span>`;
-  }
-
-  function renderEvangelismEntry() {
-    const date=$('#evangelismDate').value, rows=getRosterFiltered($('#evangelismSearch').value);
-    $('#evangelismBody').innerHTML = rows.map((p,i)=>{ const r=db.evangelism.find(x=>x.personId===p.id&&x.weekDate===date)||{}; return `<tr data-person-id="${p.id}"><td>${i+1}</td><td><div class="worker-cell"><div class="avatar">${initials(p.name)}</div><div><strong>${esc(p.name)}</strong><small>${esc(p.id)}</small></div></div></td><td>${esc(p.group||'—')}</td><td><select class="status-select ${(r.status||'').toLowerCase().replaceAll(' ','-')}">${statusOptions(r.status,true)}</select></td><td><input class="hours-input" type="number" min="0" step="0.5" value="${esc(r.hours??'')}" placeholder="0"></td><td><input class="contacts-input" type="number" min="0" step="1" value="${esc(r.contacts??'')}" placeholder="0"></td><td><input class="note-input" value="${esc(r.note||'')}" placeholder="Optional note"></td></tr>`; }).join('') || emptyRow(7);
-    bindStatusColors($('#evangelismBody'));
-    const saved=db.evangelism.filter(r=>r.weekDate===date&&r.status).length; $('#evangelismSummary').innerHTML=`<span class="summary-chip"><span class="summary-dot good"></span>${saved} saved for this week</span><span>${rows.length} workers shown</span><span>${esc(date||'Choose a date')}</span>`;
+    const ids=new Set(rows.map(p=>p.id));
+    const saved=db[metric].filter(r=>ids.has(r.personId)&&r.date===date&&r.session===session&&r.status).length;
+    $(`#${metric}Summary`).innerHTML=`<span class="summary-chip"><span class="summary-dot good"></span>${saved} saved</span><span>${rows.length} workers shown</span><span>${esc(date||'Choose a date')} • ${esc(session||'')}</span>`;
   }
 
   function renderFinanceEntry() {
-    const month=$('#financeMonth').value, rows=getRosterFiltered($('#financeSearch').value);
-    $('#financeBody').innerHTML = rows.map((p,i)=>{ const r=db.finance.find(x=>x.personId===p.id&&x.month===month)||{}; return `<tr data-person-id="${p.id}"><td>${i+1}</td><td><div class="worker-cell"><div class="avatar">${initials(p.name)}</div><div><strong>${esc(p.name)}</strong><small>${esc(p.id)}</small></div></div></td><td>${esc(p.group||'—')}</td><td><label class="check-label"><input class="tithe-paid" type="checkbox" ${r.tithePaid?'checked':''}> Paid</label></td><td><input class="tithe-amount" type="number" min="0" step="0.01" value="${esc(r.titheAmount??'')}" placeholder="R 0"></td><td><label class="check-label"><input class="fee-paid" type="checkbox" ${r.groupFeePaid?'checked':''}> Paid</label></td><td><input class="fee-amount" type="number" min="0" step="0.01" value="${esc(r.groupFeeAmount??'')}" placeholder="R 0"></td><td><input class="note-input" value="${esc(r.note||'')}" placeholder="Optional note"></td></tr>`; }).join('') || emptyRow(8);
-    const saved=db.finance.filter(r=>r.month===month).length; $('#financeSummary').innerHTML=`<span class="summary-chip"><span class="summary-dot good"></span>${saved} workers saved for ${esc(month||'month')}</span><span>${rows.length} workers shown</span>`;
+    const month=$('#financeMonth').value, cell=$('#financeCell').value, search=$('#financeSearch').value;
+    const rows=filteredRoster(cell,search), body=$('#financeBody');
+    body.innerHTML = rows.map((p,i)=>{
+      const r=db.finance.find(x=>x.personId===p.id&&x.month===month)||{};
+      return `<tr data-person-id="${esc(p.id)}"><td>${i+1}</td><td><div class="worker-cell"><div class="avatar">${initials(p.name)}</div><div><strong>${esc(p.name)}</strong><small>${esc(p.id)}</small></div></div></td><td>${esc(p.cell)}</td><td><select class="status-select ${statusClass(r.status)}">${statusOptions(r.status,'finance')}</select></td><td><input class="amount-input" type="number" min="0" step="0.01" value="${esc(r.amount??'')}" placeholder="Optional"></td><td><input class="note-input" type="text" value="${esc(r.note||'')}" placeholder="Optional note"></td></tr>`;
+    }).join('') || emptyRow(6);
+    bindStatusColors(body);
+    const ids=new Set(rows.map(p=>p.id)); const saved=db.finance.filter(r=>ids.has(r.personId)&&r.month===month&&r.status).length;
+    $('#financeSummary').innerHTML=`<span class="summary-chip"><span class="summary-dot good"></span>${saved} saved</span><span>${rows.length} workers shown</span><span>${esc(monthLabel(month)||'Choose a month')}</span>`;
   }
 
-  function bindStatusColors(root) {
-    root.querySelectorAll('.status-select').forEach(sel => { colorStatus(sel); sel.addEventListener('change',()=>colorStatus(sel)); });
-  }
-  function colorStatus(sel){ sel.className='status-select '+sel.value.toLowerCase().replaceAll(' ','-'); }
-  function initials(name){ return String(name||'?').split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase(); }
-  function emptyRow(cols){ return `<tr><td colspan="${cols}" class="empty-state">No workers match this search.</td></tr>`; }
+  function statusClass(status='') { return status.toLowerCase().replaceAll(' ','-'); }
+  function bindStatusColors(body) { body.querySelectorAll('.status-select').forEach(el => el.addEventListener('change', () => { el.className=`status-select ${statusClass(el.value)}`; })); }
+  function markAll(bodySelector, value) { $$(bodySelector+' .status-select').forEach(el=>{el.value=value;el.dispatchEvent(new Event('change'));}); }
 
   async function saveAttendanceBatch(metric) {
-    const date=$(`#${metric}Date`).value, session=$(`#${metric}Session`).value; if(!date) return toast('Please choose a date.','error');
+    const date=$(`#${metric}Date`).value, session=$(`#${metric}Session`).value;
+    if(!date) return toast('Please choose a date.','error');
     const records=[];
-    $$(`#${metric}Body tr[data-person-id]`).forEach(tr=>{ const status=tr.querySelector('.status-select').value; if(!status) return; const personId=tr.dataset.personId; const old=db[metric].find(r=>r.personId===personId&&r.date===date&&r.session===session); records.push({ id:old?.id||uid(metric.slice(0,3)), personId,date,session,status,note:tr.querySelector('.note-input').value.trim(),updatedAt:new Date().toISOString() }); });
-    upsertMany(metric,records,r=>`${r.personId}|${r.date}|${r.session}`); await afterSave(metric,records); renderEntry(metric); renderDashboard(); renderRecords(); toast(`${cap(metric)} saved for ${records.length} workers.`,'success');
+    $$( `#${metric}Body tr[data-person-id]`).forEach(tr=>{
+      const personId=tr.dataset.personId, status=tr.querySelector('.status-select').value, note=tr.querySelector('.note-input').value.trim();
+      const old=db[metric].find(r=>r.personId===personId&&r.date===date&&r.session===session);
+      if(!status && !old) return;
+      records.push({id:old?.id||uid(metric.slice(0,3)),personId,date,session,status,note,updatedAt:new Date().toISOString()});
+    });
+    if(!records.length) return toast('No statuses were selected.','error');
+    upsertMany(metric,records,r=>`${r.personId}|${r.date}|${r.session}`); saveLocal(); await syncSaved(metric,records); renderEntry(metric); renderDashboard(); renderReports(); renderRecords(); toast(`${metricLabel(metric)} saved for ${records.length} workers.`,'success');
   }
-  async function saveEvangelismBatch() {
-    const weekDate=$('#evangelismDate').value;if(!weekDate)return toast('Please choose the week date.','error');const records=[];
-    $$('#evangelismBody tr[data-person-id]').forEach(tr=>{const status=tr.querySelector('.status-select').value;if(!status)return;const personId=tr.dataset.personId;const old=db.evangelism.find(r=>r.personId===personId&&r.weekDate===weekDate);records.push({id:old?.id||uid('eva'),personId,weekDate,status,hours:numOrBlank(tr.querySelector('.hours-input').value),contacts:numOrBlank(tr.querySelector('.contacts-input').value),note:tr.querySelector('.note-input').value.trim(),updatedAt:new Date().toISOString()});});
-    upsertMany('evangelism',records,r=>`${r.personId}|${r.weekDate}`);await afterSave('evangelism',records);renderEntry('evangelism');renderDashboard();renderRecords();toast(`Evangelism saved for ${records.length} workers.`,'success');
-  }
+
   async function saveFinanceBatch() {
-    const month=$('#financeMonth').value;if(!month)return toast('Please choose a month.','error');const records=[];
-    $$('#financeBody tr[data-person-id]').forEach(tr=>{const personId=tr.dataset.personId;const old=db.finance.find(r=>r.personId===personId&&r.month===month);records.push({id:old?.id||uid('fin'),personId,month,tithePaid:tr.querySelector('.tithe-paid').checked,titheAmount:numOrBlank(tr.querySelector('.tithe-amount').value),groupFeePaid:tr.querySelector('.fee-paid').checked,groupFeeAmount:numOrBlank(tr.querySelector('.fee-amount').value),note:tr.querySelector('.note-input').value.trim(),updatedAt:new Date().toISOString()});});
-    upsertMany('finance',records,r=>`${r.personId}|${r.month}`);await afterSave('finance',records);renderEntry('finance');renderDashboard();renderRecords();toast(`Finance saved for ${records.length} workers.`,'success');
+    const month=$('#financeMonth').value; if(!month) return toast('Please choose a month.','error');
+    const records=[];
+    $$('#financeBody tr[data-person-id]').forEach(tr=>{
+      const personId=tr.dataset.personId, status=tr.querySelector('.status-select').value, amount=numOrBlank(tr.querySelector('.amount-input').value), note=tr.querySelector('.note-input').value.trim();
+      const old=db.finance.find(r=>r.personId===personId&&r.month===month);
+      if(!status && amount==='' && !note && !old) return;
+      records.push({id:old?.id||uid('fin'),personId,month,status,amount,note,updatedAt:new Date().toISOString()});
+    });
+    if(!records.length) return toast('No monthly records were entered.','error');
+    upsertMany('finance',records,r=>`${r.personId}|${r.month}`); saveLocal(); await syncSaved('finance',records); renderEntry('finance'); renderDashboard(); renderReports(); renderRecords(); toast(`Tithe & Offering saved for ${records.length} workers.`,'success');
   }
-  function numOrBlank(v){ return v===''?'':Number(v); }
-  function upsertMany(metric,records,keyFn){const map=new Map(db[metric].map(r=>[keyFn(r),r]));records.forEach(r=>map.set(keyFn(r),r));db[metric]=[...map.values()];saveLocal();}
-  async function afterSave(metric,records){ if(settings.apiUrl&&settings.apiKey&&settings.autoSync){ try{ await remoteCall({action:'saveBatch',metric,records}); }catch(e){toast('Saved locally. Google Sheets sync failed: '+e.message,'error');} } }
+
+  function numOrBlank(v) { return v==='' ? '' : Number(v); }
+  function upsertMany(metric,records,keyFn) { const map=new Map(db[metric].map(r=>[keyFn(r),r])); records.forEach(r=>map.set(keyFn(r),r)); db[metric]=[...map.values()]; }
+  async function syncSaved(metric, records) { if(settings.apiUrl&&settings.apiKey&&settings.autoSync){ try{await remoteCall({action:'saveBatch',metric,records});}catch(e){toast(`Saved locally; cloud sync failed: ${e.message}`,'error');} } }
 
   function renderPeople() {
-    const q=($('#peopleSearch')?.value||'').toLowerCase(); const rows=db.people.filter(p=>!q||`${p.name} ${p.group} ${p.id}`.toLowerCase().includes(q));
-    $('#peopleBody').innerHTML=rows.map((p,i)=>`<tr data-person-id="${p.id}"><td>${i+1}</td><td><input class="person-name" value="${esc(p.name)}"></td><td><input class="person-group" value="${esc(p.group||'')}" placeholder="Group"></td><td><label class="check-label"><input class="person-active" type="checkbox" ${p.active!==false?'checked':''}> Active</label></td></tr>`).join('')||emptyRow(4);
+    const q=($('#peopleSearch')?.value||'').toLowerCase();
+    const rows=db.people.filter(p=>!q||`${p.name} ${p.cell} ${p.id}`.toLowerCase().includes(q));
+    const defaultFrom=$('#filterFrom')?.value||'', defaultTo=$('#filterTo')?.value||today();
+    $('#peopleBody').innerHTML=rows.map((p,i)=>{
+      const perf=personPerformance(p.id,defaultFrom,defaultTo);
+      return `<tr data-person-id="${esc(p.id)}"><td>${i+1}</td><td><input class="person-name" type="text" value="${esc(p.name)}"></td><td><select class="person-cell">${cellOptions(p.cell)}</select></td><td><label class="check-label"><input class="person-active" type="checkbox" ${p.active!==false?'checked':''}> Active</label></td><td><span class="performance-chip ${scoreClass(perf.overall)}">${perf.hasData?perf.overall+'%':'—'}</span></td></tr>`;
+    }).join('')||emptyRow(5,'No workers match this search.');
+    renderCellSummary();
   }
-  async function savePeopleRoster(){ const updates=new Map(); $$('#peopleBody tr[data-person-id]').forEach(tr=>updates.set(tr.dataset.personId,{name:tr.querySelector('.person-name').value.trim()||tr.dataset.personId,group:tr.querySelector('.person-group').value.trim(),active:tr.querySelector('.person-active').checked})); db.people=db.people.map(p=>updates.has(p.id)?{...p,...updates.get(p.id),updatedAt:new Date().toISOString()}:p);saveLocal();renderAll(); if(settings.apiUrl&&settings.apiKey&&settings.autoSync){try{await remoteCall({action:'savePeople',people:db.people});}catch(e){toast('Roster saved locally; cloud sync failed.','error');return;}} toast('Worker roster saved.','success'); }
 
-  function dashboardFilters(){return{from:$('#filterFrom').value,to:$('#filterTo').value,group:$('#filterGroup').value,search:$('#dashboardSearch').value.trim().toLowerCase()};}
-  function dashboardPeople(){const f=dashboardFilters();return activePeople().filter(p=>(f.group==='all'||p.group===f.group)&&(!f.search||`${p.name} ${p.group}`.toLowerCase().includes(f.search)));}
-  function filteredRecords(metric,people=dashboardPeople()){const f=dashboardFilters(),ids=new Set(people.map(p=>p.id));return db[metric].filter(r=>ids.has(r.personId)&&dateWithin(recordDate(metric,r),f.from,f.to));}
-  function positive(metric,r){if(metric==='education'||metric==='cleaning')return r.status==='Present';if(metric==='evangelism')return r.status==='Participated';return false;}
-  function participationForPerson(personId,metric,from='',to=''){const rs=db[metric].filter(r=>r.personId===personId&&dateWithin(recordDate(metric,r),from,to));if(metric==='finance')return{score:0,total:0};const valid=rs.filter(r=>r.status&&r.status!=='Excused');return{score:pct(valid.filter(r=>positive(metric,r)).length,valid.length),total:valid.length};}
+  function cellOptions(current) { const known=[...new Set([...cellNames(),current].filter(Boolean))].sort(cellSort); return known.map(c=>`<option value="${esc(c)}" ${c===current?'selected':''}>${esc(c)}</option>`).join(''); }
+
+  function renderCellSummary() {
+    const from=$('#filterFrom')?.value||'', to=$('#filterTo')?.value||today();
+    $('#cellSummaryGrid').innerHTML=cellNames().map(cell=>{
+      const people=activePeople().filter(p=>p.cell===cell), perf=aggregatePerformance(people.map(p=>p.id),from,to);
+      return `<div class="cell-card"><strong>${esc(cell)}</strong><span>${people.length} workers</span><b>${perf.hasData?perf.overall+'%':'—'}</b><span>overall performance</span></div>`;
+    }).join('');
+  }
+
+  async function savePeopleRoster() {
+    const updates=new Map();
+    $$('#peopleBody tr[data-person-id]').forEach(tr=>updates.set(tr.dataset.personId,{name:tr.querySelector('.person-name').value.trim()||tr.dataset.personId,cell:tr.querySelector('.person-cell').value,active:tr.querySelector('.person-active').checked}));
+    db.people=db.people.map(p=>updates.has(p.id)?{...p,...updates.get(p.id),updatedAt:new Date().toISOString()}:p); saveLocal(); renderAll();
+    if(settings.apiUrl&&settings.apiKey&&settings.autoSync){try{await remoteCall({action:'savePeople',people:db.people});}catch(e){return toast('Roster saved locally; cloud sync failed.','error');}}
+    toast('Worker structure saved.','success');
+  }
+
+  function restoreStructure() {
+    if(!confirm('Restore the supplied 7-cell worker structure? Existing records stay linked to worker IDs, so only do this if the IDs still represent these workers.')) return;
+    db.people=createPeople(); saveLocal(); renderAll(); toast('Supplied structure restored.','success');
+  }
+
+  function dashboardFilters() { return {from:$('#filterFrom').value,to:$('#filterTo').value,cell:$('#filterCell').value,worker:$('#filterWorker').value,q:$('#globalSearch').value.trim().toLowerCase()}; }
+  function dashboardPeople() {
+    const f=dashboardFilters();
+    return activePeople().filter(p=>(f.cell==='all'||p.cell===f.cell)&&(f.worker==='all'||p.id===f.worker)&&(!f.q||`${p.name} ${p.cell}`.toLowerCase().includes(f.q)));
+  }
+
+  function filteredRecords(metric, people, from, to) { const ids=new Set(people.map(p=>p.id)); return db[metric].filter(r=>ids.has(r.personId)&&dateWithin(recordDate(metric,r),from,to)); }
+  function metricPerformanceFromRecords(metric, records) { const valid=records.filter(r=>validStatus(r.status)); return {score:pct(valid.filter(r=>positive(metric,r.status)).length,valid.length),total:valid.length,positive:valid.filter(r=>positive(metric,r.status)).length}; }
+  function metricPerformance(personId,metric,from='',to='') { return metricPerformanceFromRecords(metric,db[metric].filter(r=>r.personId===personId&&dateWithin(recordDate(metric,r),from,to))); }
+
+  function aggregatePerformance(personIds,from='',to='') {
+    const ids=new Set(personIds), metrics={};
+    METRICS.forEach(metric=>metrics[metric]=metricPerformanceFromRecords(metric,db[metric].filter(r=>ids.has(r.personId)&&dateWithin(recordDate(metric,r),from,to))));
+    const scored=METRICS.map(m=>metrics[m]).filter(x=>x.total>0); const overall=scored.length?Math.round(scored.reduce((s,x)=>s+x.score,0)/scored.length):0;
+    return {...metrics,overall,hasData:scored.length>0,totalRecords:scored.reduce((s,x)=>s+x.total,0)};
+  }
+
+  function personPerformance(id,from='',to='') { return aggregatePerformance([id],from,to); }
 
   function renderDashboard() {
-    const people=dashboardPeople(), f=dashboardFilters(); const edu=filteredRecords('education',people), clean=filteredRecords('cleaning',people), ev=filteredRecords('evangelism',people), fin=filteredRecords('finance',people);
-    const metricRate=(metric,arr)=>{const valid=arr.filter(r=>r.status&&r.status!=='Excused');return pct(valid.filter(r=>positive(metric,r)).length,valid.length)};
-    const eduRate=metricRate('education',edu),cleanRate=metricRate('cleaning',clean),evRate=metricRate('evangelism',ev);
-    const finRelevant=fin; const tithe=pct(finRelevant.filter(r=>r.tithePaid).length,finRelevant.length); const fee=pct(finRelevant.filter(r=>r.groupFeePaid).length,finRelevant.length);
-    const combinedDen=[eduRate,cleanRate,evRate].filter((_,i)=>[edu,clean,ev][i].length).length; const overall=combinedDen?Math.round(([edu.length?eduRate:null,clean.length?cleanRate:null,ev.length?evRate:null].filter(x=>x!==null).reduce((a,b)=>a+b,0))/combinedDen):0;
-    const kpis=[
-      ['Overall participation',`${overall}%`,`${people.length} workers in filter`,'#a7558d','#f9e8f2'],['Education',`${eduRate}%`,`${edu.length} saved entries`,'#7b65cf','#eeeaff'],['Cleaning',`${cleanRate}%`,`${clean.length} saved entries`,'#d05f79','#ffecef'],['Evangelism',`${evRate}%`,`${ev.length} saved entries`,'#d19232','#fff4dc'],['Tithe / Fees',`${tithe}% / ${fee}%`,`${fin.length} monthly records`,'#438f7d','#e7faf4']
+    if(!$('#filterCell')) return;
+    const f=dashboardFilters(), people=dashboardPeople(), perf=aggregatePerformance(people.map(p=>p.id),f.from,f.to);
+    const scopePerson=f.worker!=='all'?personById(f.worker):null;
+    const scope = scopePerson ? `${scopePerson.name} • ${scopePerson.cell}` : f.cell!=='all' ? `${f.cell} • ${people.length} workers` : f.q ? `Search: “${f.q}” • ${people.length} workers` : `Whole school • ${people.length} workers`;
+    $('#scopeBanner').innerHTML=`<span>✦</span><strong>${esc(scope)}</strong><span>${f.from||'All dates'} → ${f.to||'Latest'}</span>`;
+    const cards=[
+      ['Overall',perf.overall,perf.totalRecords?`${perf.totalRecords} measured records`:'No recorded activity'],
+      ['Education',perf.education.score,`${perf.education.total} records`],
+      ['Service',perf.service.score,`${perf.service.total} records`],
+      ['Cleaning',perf.cleaning.score,`${perf.cleaning.total} records`],
+      ['Tithe & Offering',perf.finance.score,`${perf.finance.total} monthly records`],
+      ['Workers',people.length, f.cell==='all'?'School view':f.cell]
     ];
-    $('#kpiGrid').innerHTML=kpis.map(k=>`<div class="kpi-card" style="--accent:${k[3]};--accent-soft:${k[4]}"><div class="kpi-label">${k[0]}</div><div class="kpi-value">${k[1]}</div><div class="kpi-sub">${k[2]}</div></div>`).join('');
-    renderFollowUp(people,f); renderCharts(people,edu,clean,ev,fin);
+    $('#kpiGrid').innerHTML=cards.map((c,i)=>{const metricTotal=i===0?perf.totalRecords:i===1?perf.education.total:i===2?perf.service.total:i===3?perf.cleaning.total:i===4?perf.finance.total:1;const shown=i===5?c[1]:(metricTotal?c[1]+'%':'—');return `<div class="kpi-card"><div class="kpi-label">${esc(c[0])}</div><div class="kpi-value">${shown}</div><div class="kpi-sub">${esc(c[2])}</div>${i<5?`<div class="progress-mini"><span style="width:${metricTotal?c[1]:0}%"></span></div>`:''}</div>`;}).join('');
+    renderFollowUp(people,f.from,f.to);
+    renderDashboardCharts(people,f.from,f.to);
   }
 
-  function renderFollowUp(people,f){
-    const rows=people.map(p=>{const e=participationForPerson(p.id,'education',f.from,f.to),c=participationForPerson(p.id,'cleaning',f.from,f.to),v=participationForPerson(p.id,'evangelism',f.from,f.to);const values=[e,c,v].filter(x=>x.total>0);const overall=values.length?Math.round(values.reduce((a,b)=>a+b.score,0)/values.length):0;return{p,e:e.score,c:c.score,v:v.score,overall,total:values.reduce((a,b)=>a+b.total,0)}}).filter(x=>x.total>0).sort((a,b)=>a.overall-b.overall).slice(0,8);
-    $('#followUpBody').innerHTML=rows.length?rows.map(r=>`<tr><td><div class="worker-cell"><div class="avatar">${initials(r.p.name)}</div><strong>${esc(r.p.name)}</strong></div></td><td>${esc(r.p.group||'—')}</td><td>${score(r.e)}</td><td>${score(r.c)}</td><td>${score(r.v)}</td><td>${score(r.overall)}</td></tr>`).join(''):`<tr><td colspan="6" class="empty-state">Add participation records to see follow-up insights.</td></tr>`;
+  function renderFollowUp(people,from,to) {
+    const rows=people.map(p=>({p,perf:personPerformance(p.id,from,to)})).filter(x=>x.perf.hasData).sort((a,b)=>a.perf.overall-b.perf.overall).slice(0,10);
+    $('#followUpBody').innerHTML=rows.length?rows.map(x=>`<tr><td><div class="worker-cell"><div class="avatar">${initials(x.p.name)}</div><strong>${esc(x.p.name)}</strong></div></td><td>${esc(x.p.cell)}</td>${METRICS.map(m=>`<td>${x.perf[m].total?x.perf[m].score+'%':'—'}</td>`).join('')}<td><span class="performance-chip ${scoreClass(x.perf.overall)}">${x.perf.overall}%</span></td></tr>`).join(''):emptyRow(7,'No performance data in this period.');
   }
-  function score(n){const cls=n>=80?'score-good':n>=60?'score-mid':'score-low';return`<span class="metric-score ${cls}">${n}%</span>`;}
 
-  function renderCharts(people,edu,clean,ev,fin){ if(typeof Chart==='undefined')return;
-    const weeks=lastWeeks(8); const eduSeries=['Wednesday','Saturday','Sunday'].map(session=>({label:session,data:weeks.map(w=>{const rs=edu.filter(r=>r.session===session&&r.date>=w.start&&r.date<=w.end&&r.status!=='Excused');return pct(rs.filter(r=>r.status==='Present').length,rs.length)}),tension:.35,borderWidth:2,pointRadius:3}));
-    makeChart('educationTrendChart','line',{labels:weeks.map(w=>w.label),datasets:eduSeries},{scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}});
-    const all=[...edu.filter(r=>r.status!=='Excused').map(r=>['Education',r.status==='Present']),...clean.filter(r=>r.status!=='Excused').map(r=>['Cleaning',r.status==='Present']),...ev.filter(r=>r.status!=='Excused').map(r=>['Evangelism',r.status==='Participated'])];
-    const present=all.filter(x=>x[1]).length,missed=all.filter(x=>!x[1]).length;
-    makeChart('participationMixChart','doughnut',{labels:['Participated','Missed'],datasets:[{data:[present,missed],backgroundColor:['#df79a6','#ead6e1'],borderWidth:0}]},{cutout:'70%',plugins:{legend:{position:'bottom'}}});
-    const f=dashboardFilters(); const top=people.map(p=>{const e=participationForPerson(p.id,'education',f.from,f.to),c=participationForPerson(p.id,'cleaning',f.from,f.to),v=participationForPerson(p.id,'evangelism',f.from,f.to);const arr=[e,c,v].filter(x=>x.total);return{name:p.name,score:arr.length?Math.round(arr.reduce((a,b)=>a+b.score,0)/arr.length):0,total:arr.reduce((a,b)=>a+b.total,0)}}).filter(x=>x.total).sort((a,b)=>b.score-a.score).slice(0,7).reverse();
-    makeChart('topWorkersChart','bar',{labels:top.map(x=>shortName(x.name)),datasets:[{label:'Participation %',data:top.map(x=>x.score),backgroundColor:'#9b7be8',borderRadius:8}]},{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}});
-    const months=[...new Set(fin.map(r=>r.month))].sort().slice(-6);makeChart('financeChart','bar',{labels:months.map(monthLabel),datasets:[{label:'Tithe',data:months.map(m=>{const rs=fin.filter(r=>r.month===m);return pct(rs.filter(r=>r.tithePaid).length,rs.length)}),backgroundColor:'#65b9a0',borderRadius:7},{label:'Group fee',data:months.map(m=>{const rs=fin.filter(r=>r.month===m);return pct(rs.filter(r=>r.groupFeePaid).length,rs.length)}),backgroundColor:'#e6ad4b',borderRadius:7}]},{plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}});
+  function renderDashboardCharts(people,from,to) {
+    if(typeof Chart==='undefined') return;
+    const perf=aggregatePerformance(people.map(p=>p.id),from,to);
+    makeChart('categoryChart','bar',{labels:['Education','Service','Cleaning','Tithe & Offering'],datasets:[{label:'Performance %',data:METRICS.map(m=>perf[m].score),backgroundColor:['#8e72d8','#5d8fc7','#d86179','#4b9c87'],borderRadius:8}]},{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}});
+
+    const weeks=lastWeeks(8,to||today());
+    const weekly=weeks.map(w=>aggregatePerformance(people.map(p=>p.id),w.start,w.end));
+    makeChart('weeklyTrendChart','line',{labels:weeks.map(w=>w.label),datasets:[{label:'Overall',data:weekly.map(x=>x.hasData?x.overall:null),borderColor:'#9a6fc5',backgroundColor:'rgba(154,111,197,.12)',fill:true,tension:.35,pointRadius:3},{label:'Education',data:weekly.map(x=>x.education.total?x.education.score:null),borderColor:'#d06e9f',tension:.35,pointRadius:2}]},{scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}});
+
+    const f=dashboardFilters(); const compareCells=(f.cell==='all'?cellNames():[f.cell]).map(cell=>{const ids=people.filter(p=>p.cell===cell).map(p=>p.id);const p=aggregatePerformance(ids,from,to);return{cell,score:p.hasData?p.overall:0,hasData:p.hasData};});
+    makeChart('cellChart','bar',{labels:compareCells.map(x=>x.cell),datasets:[{label:'Overall %',data:compareCells.map(x=>x.score),backgroundColor:'#7e9bd2',borderRadius:8}]},{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}});
+
+    const ids=new Set(people.map(p=>p.id)); const finance=db.finance.filter(r=>ids.has(r.personId)&&dateWithin(recordDate('finance',r),from,to));
+    const months=[...new Set(finance.map(r=>r.month).filter(Boolean))].sort().slice(-8);
+    makeChart('financeChart','bar',{labels:months.map(monthLabel),datasets:[{label:'Submitted %',data:months.map(m=>metricPerformanceFromRecords('finance',finance.filter(r=>r.month===m)).score),backgroundColor:'#5eae97',borderRadius:7}]},{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}});
   }
-  function makeChart(id,type,data,options={}){if(charts[id])charts[id].destroy();const ctx=$(`#${id}`);charts[id]=new Chart(ctx,{type,data,options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{usePointStyle:true,boxWidth:8,font:{size:10}}},tooltip:{backgroundColor:'#4f3d55',padding:10,cornerRadius:10},...(options.plugins||{})},scales:type==='doughnut'?undefined:{x:{grid:{display:false},ticks:{font:{size:10},color:'#88758c'},...(options.scales?.x||{})},y:{grid:{color:'rgba(117,88,128,.08)'},ticks:{font:{size:10},color:'#88758c'},...(options.scales?.y||{})}},...options}})}
-  function lastWeeks(n){const out=[];const end=new Date();for(let i=n-1;i>=0;i--){const d=new Date(end);d.setDate(d.getDate()-i*7);const day=d.getDay();const start=new Date(d);start.setDate(d.getDate()-((day+6)%7));const e=new Date(start);e.setDate(start.getDate()+6);out.push({start:start.toISOString().slice(0,10),end:e.toISOString().slice(0,10),label:`${start.getDate()} ${start.toLocaleString('en',{month:'short'})}`});}return out;}
-  function shortName(n){const s=n.split(/\s+/);return s.length>2?s.slice(0,2).join(' '):n;}
-  function monthLabel(m){if(!m)return'';const [y,mo]=m.split('-');return new Date(Number(y),Number(mo)-1,1).toLocaleString('en',{month:'short',year:'2-digit'});}
 
-  function allFlatRecords(){const rows=[];db.education.forEach(r=>rows.push(flat('education',r)));db.cleaning.forEach(r=>rows.push(flat('cleaning',r)));db.evangelism.forEach(r=>rows.push(flat('evangelism',r)));db.finance.forEach(r=>rows.push(flat('finance',r)));return rows.sort((a,b)=>b.sortDate.localeCompare(a.sortDate));}
-  function flat(metric,r){const p=personById(r.personId);if(metric==='finance')return{metric,id:r.id,sortDate:`${r.month}-01`,date:r.month,person:p.name,group:p.group,detail:`Tithe: ${r.tithePaid?'Paid':'Not paid'} • Fee: ${r.groupFeePaid?'Paid':'Not paid'}`,status:`${r.tithePaid?'Tithe ✓':'Tithe —'} / ${r.groupFeePaid?'Fee ✓':'Fee —'}`,note:r.note||'',raw:r};return{metric,id:r.id,sortDate:r.date||r.weekDate||'',date:r.date||r.weekDate||'',person:p.name,group:p.group,detail:r.session||`${r.hours||0}h • ${r.contacts||0} contacts`,status:r.status||'',note:r.note||'',raw:r};}
-  function renderRecords(){const metric=$('#recordsMetric').value,from=$('#recordsFrom').value,to=$('#recordsTo').value,q=$('#recordsSearch').value.toLowerCase();visibleRecordsCache=allFlatRecords().filter(x=>(metric==='all'||x.metric===metric)&&dateWithin(x.sortDate,from,to)&&(!q||`${x.person} ${x.group} ${x.metric} ${x.status} ${x.detail} ${x.note}`.toLowerCase().includes(q)));$('#recordsBody').innerHTML=visibleRecordsCache.length?visibleRecordsCache.slice(0,1000).map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.person)}</td><td>${esc(x.group||'—')}</td><td><span class="pill ${x.metric==='finance'?'mint':x.metric==='evangelism'?'gold':x.metric==='cleaning'?'rose':'lavender'}">${esc(cap(x.metric))}</span></td><td>${esc(x.detail)}</td><td>${esc(x.status)}</td><td>${esc(x.note||'—')}</td><td><button class="delete-btn" data-delete="${x.id}" data-metric="${x.metric}" title="Delete">×</button></td></tr>`).join(''):`<tr><td colspan="8" class="empty-state">No records match these filters.</td></tr>`;}
-  async function deleteRecord(metric,id){if(!confirm('Delete this record?'))return;db[metric]=db[metric].filter(r=>r.id!==id);saveLocal();renderAll();if(settings.apiUrl&&settings.apiKey&&settings.autoSync){try{await remoteCall({action:'deleteRecord',metric,id});}catch(e){toast('Deleted locally, but cloud delete failed.','error');return;}}toast('Record deleted.','success');}
-
-  function bindSettings(){
-    $('#apiUrl').value=settings.apiUrl;$('#apiKey').value=settings.apiKey;$('#autoSync').checked=settings.autoSync;
-    $('#saveConnection').addEventListener('click',async()=>{settings.apiUrl=$('#apiUrl').value.trim();settings.apiKey=$('#apiKey').value.trim();settings.autoSync=$('#autoSync').checked;saveSettingsLocal();if(!settings.apiUrl||!settings.apiKey){updateConnectionUI();return toast('Enter both the Web App URL and API key.','error');}await syncFromRemote(true);});
-    $('#disconnectButton').addEventListener('click',()=>{settings.apiUrl='';settings.apiKey='';saveSettingsLocal();$('#apiUrl').value='';$('#apiKey').value='';updateConnectionUI();$('#settingsStatus').textContent='Local browser mode enabled.';toast('Disconnected from Google Sheets.','success');});
-    $('#autoSync').addEventListener('change',e=>{settings.autoSync=e.target.checked;saveSettingsLocal();});
-    $('#importBackupInput').addEventListener('change',importBackup);
+  function makeChart(id,type,data,options={}) {
+    if(typeof Chart==='undefined' || !$('#'+id)) return; if(charts[id]) charts[id].destroy();
+    const ctx=$('#'+id);
+    const defaultScales=type==='doughnut'?undefined:{x:{grid:{display:false},ticks:{font:{size:10},color:'#88758c'}},y:{grid:{color:'rgba(117,88,128,.08)'},ticks:{font:{size:10},color:'#88758c'}}};
+    const mergedPlugins={legend:{labels:{usePointStyle:true,boxWidth:8,font:{size:10}}},tooltip:{backgroundColor:'#4f3d55',padding:10,cornerRadius:10},...(options.plugins||{})};
+    const mergedScales=defaultScales?{x:{...defaultScales.x,...(options.scales?.x||{})},y:{...defaultScales.y,...(options.scales?.y||{})}}:undefined;
+    const finalOptions={...options,responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false,...(options.interaction||{})},plugins:mergedPlugins,scales:mergedScales};
+    charts[id]=new Chart(ctx,{type,data,options:finalOptions});
   }
-  function updateConnectionUI(connected=!!(settings.apiUrl&&settings.apiKey)){const dot=$('#connectionDot');dot.classList.toggle('connected',connected);$('#connectionLabel').textContent=connected?'Google Sheets':'Local mode';$('#connectionDetail').textContent=connected?'Cloud connection configured':'Saved in this browser';}
-  async function remoteCall(payload){const res=await fetch(settings.apiUrl,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({...payload,apiKey:settings.apiKey})});if(!res.ok)throw new Error(`HTTP ${res.status}`);const data=await res.json();if(!data.ok)throw new Error(data.error||'Unknown server error');return data;}
-  async function syncFromRemote(showMessage=true){if(!settings.apiUrl||!settings.apiKey)return;showLoading(true,'Syncing with Google Sheets...');try{const data=await remoteCall({action:'getAll'});if(data.data){db={...emptyDB(),...data.data};saveLocal();renderAll();updateConnectionUI(true);$('#settingsStatus').textContent=`Connected. Last synced ${new Date().toLocaleString()}.`;if(showMessage)toast('Synced with Google Sheets.','success');}}catch(e){updateConnectionUI(false);$('#settingsStatus').textContent='Connection failed: '+e.message;if(showMessage)toast('Could not connect: '+e.message,'error');}finally{showLoading(false)}}
 
-  function exportBackup(){const blob=new Blob([JSON.stringify({version:1,exportedAt:new Date().toISOString(),data:db},null,2)],{type:'application/json'});downloadBlob(blob,`heavenly-dashboard-backup-${today()}.json`);toast('Backup exported.','success');}
-  function importBackup(e){const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(reader.result);const incoming=parsed.data||parsed;if(!incoming.people||!Array.isArray(incoming.people))throw new Error('Invalid backup');db={...emptyDB(),...incoming};saveLocal();renderAll();toast('Backup imported.','success');}catch(err){toast('Could not import this backup.','error');}};reader.readAsText(file);e.target.value='';}
-  function exportVisibleCSV(){renderRecords();const headers=['Date','Worker','Group','Metric','Detail','Status','Notes'];const lines=[headers,...visibleRecordsCache.map(r=>[r.date,r.person,r.group,cap(r.metric),r.detail,r.status,r.note])].map(row=>row.map(csvCell).join(','));downloadBlob(new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8'}),`participation-records-${today()}.csv`);toast('CSV exported for Excel.','success');}
-  function csvCell(v){const s=String(v??'');return /[",\n]/.test(s)?`"${s.replaceAll('"','""')}"`:s;}
-  function downloadBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),500);}
-  function showLoading(show,text='Loading...'){$('#loadingText').textContent=text;$('#loadingOverlay').classList.toggle('show',show);}
-  function toast(message,type=''){const el=$('#toast');el.textContent=message;el.className=`toast show ${type}`;clearTimeout(toast.t);toast.t=setTimeout(()=>el.className='toast',3200);}
+  function lastWeeks(n,endDate) {
+    const out=[], end=new Date(`${endDate}T12:00:00`);
+    for(let i=n-1;i>=0;i--){const d=new Date(end);d.setDate(d.getDate()-i*7);const day=d.getDay();const start=new Date(d);start.setDate(d.getDate()-((day+6)%7));const e=new Date(start);e.setDate(start.getDate()+6);out.push({start:localISO(start),end:localISO(e),label:`${start.getDate()} ${start.toLocaleString('en-ZA',{month:'short'})}`});}
+    return out;
+  }
+
+  function renderReports() {
+    if(!$('#reportView')) return;
+    const view=$('#reportView').value, from=$('#reportFrom').value, to=$('#reportTo').value, cell=$('#reportCell').value, worker=$('#reportWorker').value;
+    let people=activePeople().filter(p=>(cell==='all'||p.cell===cell)&&(worker==='all'||p.id===worker));
+    if(view==='workers') {
+      reportRowsCache=people.map(p=>{const perf=personPerformance(p.id,from,to);return{Worker:p.name,Cell:p.cell,Education:perf.education.total?perf.education.score:'',Service:perf.service.total?perf.service.score:'',Cleaning:perf.cleaning.total?perf.cleaning.score:'','Tithe & Offering':perf.finance.total?perf.finance.score:'',Overall:perf.hasData?perf.overall:'',Records:perf.totalRecords};}).sort((a,b)=>(b.Overall||-1)-(a.Overall||-1));
+      $('#reportHead').innerHTML='<tr><th>Worker</th><th>Cell</th><th>Education</th><th>Service</th><th>Cleaning</th><th>Tithe & Offering</th><th>Overall</th><th>Records</th></tr>';
+      $('#reportBody').innerHTML=reportRowsCache.length?reportRowsCache.map(r=>`<tr><td>${esc(r.Worker)}</td><td>${esc(r.Cell)}</td><td>${fmtScore(r.Education)}</td><td>${fmtScore(r.Service)}</td><td>${fmtScore(r.Cleaning)}</td><td>${fmtScore(r['Tithe & Offering'])}</td><td>${r.Overall===''?'—':`<span class="performance-chip ${scoreClass(r.Overall)}">${r.Overall}%</span>`}</td><td>${r.Records}</td></tr>`).join(''):emptyRow(8,'No workers match this filter.');
+      const top=reportRowsCache.filter(r=>r.Overall!=='').slice(0,20).reverse(); makeChart('reportChart','bar',{labels:top.map(r=>shortName(r.Worker)),datasets:[{label:'Overall %',data:top.map(r=>r.Overall),backgroundColor:'#9a77d5',borderRadius:7}]},{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}});
+    } else if(view==='cells') {
+      const cells=(cell==='all'?cellNames():[cell]);
+      reportRowsCache=cells.map(c=>{const ids=people.filter(p=>p.cell===c).map(p=>p.id),perf=aggregatePerformance(ids,from,to);return{Cell:c,Workers:ids.length,Education:perf.education.total?perf.education.score:'',Service:perf.service.total?perf.service.score:'',Cleaning:perf.cleaning.total?perf.cleaning.score:'','Tithe & Offering':perf.finance.total?perf.finance.score:'',Overall:perf.hasData?perf.overall:'',Records:perf.totalRecords};});
+      $('#reportHead').innerHTML='<tr><th>Cell</th><th>Workers</th><th>Education</th><th>Service</th><th>Cleaning</th><th>Tithe & Offering</th><th>Overall</th><th>Records</th></tr>';
+      $('#reportBody').innerHTML=reportRowsCache.length?reportRowsCache.map(r=>`<tr><td><strong>${esc(r.Cell)}</strong></td><td>${r.Workers}</td><td>${fmtScore(r.Education)}</td><td>${fmtScore(r.Service)}</td><td>${fmtScore(r.Cleaning)}</td><td>${fmtScore(r['Tithe & Offering'])}</td><td>${r.Overall===''?'—':`<span class="performance-chip ${scoreClass(r.Overall)}">${r.Overall}%</span>`}</td><td>${r.Records}</td></tr>`).join(''):emptyRow(8);
+      makeChart('reportChart','bar',{labels:reportRowsCache.map(r=>r.Cell),datasets:[{label:'Overall %',data:reportRowsCache.map(r=>r.Overall||0),backgroundColor:'#6c99c7',borderRadius:8}]},{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}});
+    } else {
+      const ids=new Set(people.map(p=>p.id));
+      reportRowsCache=allFlatRecords().filter(r=>ids.has(r.personId)&&dateWithin(r.sortDate,from,to));
+      $('#reportHead').innerHTML='<tr><th>Date</th><th>Worker</th><th>Cell</th><th>Metric</th><th>Detail</th><th>Status</th><th>Notes</th></tr>';
+      $('#reportBody').innerHTML=reportRowsCache.length?reportRowsCache.slice(0,1500).map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.person)}</td><td>${esc(r.cell)}</td><td>${esc(r.metricLabel)}</td><td>${esc(r.detail)}</td><td>${esc(r.status||'—')}</td><td>${esc(r.note||'—')}</td></tr>`).join(''):emptyRow(7,'No records match this period.');
+      const counts=METRICS.map(m=>reportRowsCache.filter(r=>r.metric===m).length); makeChart('reportChart','bar',{labels:METRICS.map(metricLabel),datasets:[{label:'Records',data:counts,backgroundColor:['#8e72d8','#5d8fc7','#d86179','#4b9c87'],borderRadius:8}]},{plugins:{legend:{display:false}}});
+    }
+    $('#reportCount').textContent=`${reportRowsCache.length} ${view==='records'?'records':'rows'} • ${from||'All dates'} to ${to||'latest'}`;
+  }
+
+  function fmtScore(v) { return v===''?'—':`${v}%`; }
+
+  function allFlatRecords() {
+    const rows=[];
+    ['education','service','cleaning'].forEach(metric=>db[metric].forEach(r=>{const p=personById(r.personId);rows.push({metric,metricLabel:metricLabel(metric),id:r.id,personId:r.personId,sortDate:r.date||'',date:r.date||'',person:p.name,cell:p.cell,detail:r.session||'',status:r.status||'',note:r.note||'',raw:r});}));
+    db.finance.forEach(r=>{const p=personById(r.personId);rows.push({metric:'finance',metricLabel:'Tithe & Offering',id:r.id,personId:r.personId,sortDate:`${r.month}-01`,date:r.month,person:p.name,cell:p.cell,detail:r.amount!==''&&r.amount!=null?`Amount: R${r.amount}`:'Monthly record',status:r.status||'',note:r.note||'',raw:r});});
+    return rows.sort((a,b)=>b.sortDate.localeCompare(a.sortDate)||a.person.localeCompare(b.person));
+  }
+
+  function renderRecords() {
+    if(!$('#recordsBody')) return;
+    const metric=$('#recordsMetric').value, from=$('#recordsFrom').value, to=$('#recordsTo').value, cell=$('#recordsCell').value, q=$('#recordsSearch').value.toLowerCase();
+    visibleRecordsCache=allFlatRecords().filter(x=>(metric==='all'||x.metric===metric)&&(cell==='all'||x.cell===cell)&&dateWithin(x.sortDate,from,to)&&(!q||`${x.person} ${x.cell} ${x.metricLabel} ${x.status} ${x.detail} ${x.note}`.toLowerCase().includes(q)));
+    $('#recordsCount').textContent=`${visibleRecordsCache.length} filtered record${visibleRecordsCache.length===1?'':'s'}`;
+    $('#recordsBody').innerHTML=visibleRecordsCache.length?visibleRecordsCache.slice(0,1500).map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.person)}</td><td>${esc(x.cell)}</td><td><span class="pill ${x.metric==='finance'?'mint':x.metric==='service'?'blue':x.metric==='cleaning'?'rose':'lavender'}">${esc(x.metricLabel)}</span></td><td>${esc(x.detail)}</td><td>${esc(x.status||'—')}</td><td>${esc(x.note||'—')}</td><td><button class="delete-btn" data-delete="${esc(x.id)}" data-metric="${esc(x.metric)}" title="Delete">×</button></td></tr>`).join(''):emptyRow(8,'No records match these filters.');
+  }
+
+  async function deleteRecord(metric,id) {
+    if(!confirm('Delete this record?')) return;
+    db[metric]=db[metric].filter(r=>r.id!==id); saveLocal(); renderAll();
+    if(settings.apiUrl&&settings.apiKey&&settings.autoSync){try{await remoteCall({action:'deleteRecord',metric,id});}catch(e){return toast('Deleted locally, but cloud delete failed.','error');}}
+    toast('Record deleted.','success');
+  }
+
+  function exportBackup() {
+    const blob=new Blob([JSON.stringify({version:2,exportedAt:new Date().toISOString(),data:db},null,2)],{type:'application/json'});
+    downloadBlob(blob,`heavenly-school-backup-${today()}.json`); toast('JSON backup exported.','success');
+  }
+
+  function importBackup(e) {
+    const file=e.target.files?.[0]; if(!file) return;
+    const reader=new FileReader();
+    reader.onload=()=>{try{const parsed=JSON.parse(reader.result);const incoming=parsed.data||parsed;if(!incoming.people||!Array.isArray(incoming.people))throw new Error('Invalid backup');db={...emptyDB(),...incoming};METRICS.forEach(m=>{if(!Array.isArray(db[m]))db[m]=[]});saveLocal();renderAll();toast('Backup imported.','success');}catch(err){toast('Could not import this backup.','error');}};
+    reader.readAsText(file); e.target.value='';
+  }
+
+  function exportVisibleRecordsCSV() { renderRecords(); const rows=visibleRecordsCache.map(flatExportRow); exportCSVRows(rows,`filtered-records-${today()}.csv`); }
+  function exportReportCSV() { renderReports(); exportCSVRows(reportRowsCache,`performance-report-${today()}.csv`); }
+  function exportCSVRows(rows,name) {
+    if(!rows.length) return toast('There is no data to export.','error');
+    const normalized=rows.map(r=>{ if(r.metric) return flatExportRow(r); return r; }); const headers=Object.keys(normalized[0]); const lines=[headers,...normalized.map(r=>headers.map(h=>r[h]??''))].map(row=>row.map(csvCell).join(',')); downloadBlob(new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8'}),name); toast('CSV exported.','success');
+  }
+  function flatExportRow(r) { return {Date:r.date,Worker:r.person,Cell:r.cell,Metric:r.metricLabel,Detail:r.detail,Status:r.status,Notes:r.note}; }
+  function csvCell(v) { const s=String(v??''); return /[",\n]/.test(s)?`"${s.replaceAll('"','""')}"`:s; }
+
+  function exportExcelWorkbook(filteredReport=false) {
+    if(typeof XLSX==='undefined') return toast('Excel library did not load. Check your internet connection and refresh.','error');
+    const wb=XLSX.utils.book_new();
+    const peopleRows=(filteredReport?reportFilteredPeople():db.people).map(p=>({ID:p.id,Name:p.name,Cell:p.cell,Active:p.active!==false?'Yes':'No'}));
+    appendSheet(wb,'Workers',peopleRows);
+    const ids=new Set(peopleRows.map(r=>r.ID));
+    const from=filteredReport?$('#reportFrom').value:'', to=filteredReport?$('#reportTo').value:'';
+    const recordFilter=(metric,r)=>ids.has(r.personId)&&(!filteredReport||dateWithin(recordDate(metric,r),from,to));
+    appendSheet(wb,'Education',db.education.filter(r=>recordFilter('education',r)).map(r=>attendanceExcelRow('education',r)));
+    appendSheet(wb,'Service Attendance',db.service.filter(r=>recordFilter('service',r)).map(r=>attendanceExcelRow('service',r)));
+    appendSheet(wb,'Cleaning',db.cleaning.filter(r=>recordFilter('cleaning',r)).map(r=>attendanceExcelRow('cleaning',r)));
+    appendSheet(wb,'Tithe Offering',db.finance.filter(r=>recordFilter('finance',r)).map(financeExcelRow));
+    const summary=peopleRows.map(pr=>{const perf=personPerformance(pr.ID,from,to);return{Worker:pr.Name,Cell:pr.Cell,'Education %':perf.education.total?perf.education.score:'','Service %':perf.service.total?perf.service.score:'','Cleaning %':perf.cleaning.total?perf.cleaning.score:'','Tithe & Offering %':perf.finance.total?perf.finance.score:'','Overall %':perf.hasData?perf.overall:'','Measured Records':perf.totalRecords};});
+    appendSheet(wb,'Performance Summary',summary);
+    XLSX.writeFile(wb,`heavenly-school-${filteredReport?'filtered-report':'full-data'}-${today()}.xlsx`); toast('Excel workbook exported.','success');
+  }
+
+  function exportVisibleRecordsExcel() {
+    if(typeof XLSX==='undefined') return toast('Excel library did not load.','error'); renderRecords();
+    const wb=XLSX.utils.book_new(); appendSheet(wb,'Filtered Records',visibleRecordsCache.map(flatExportRow)); XLSX.writeFile(wb,`filtered-records-${today()}.xlsx`); toast('Filtered Excel file exported.','success');
+  }
+
+  function reportFilteredPeople() { const cell=$('#reportCell').value,worker=$('#reportWorker').value; return activePeople().filter(p=>(cell==='all'||p.cell===cell)&&(worker==='all'||p.id===worker)); }
+  function attendanceExcelRow(metric,r) { const p=personById(r.personId); return {'Record ID':r.id,'Worker ID':r.personId,Worker:p.name,Cell:p.cell,Date:r.date,Session:r.session,Status:r.status,Notes:r.note||'','Updated At':r.updatedAt||''}; }
+  function financeExcelRow(r) { const p=personById(r.personId); return {'Record ID':r.id,'Worker ID':r.personId,Worker:p.name,Cell:p.cell,Month:r.month,Status:r.status,Amount:r.amount??'',Notes:r.note||'','Updated At':r.updatedAt||''}; }
+  function appendSheet(wb,name,rows) { const safeRows=rows.length?rows:[{Message:'No data'}]; const ws=XLSX.utils.json_to_sheet(safeRows); ws['!cols']=Object.keys(safeRows[0]).map(k=>({wch:Math.min(32,Math.max(12,k.length+2))})); XLSX.utils.book_append_sheet(wb,ws,name.slice(0,31)); }
+
+  function importExcelWorkbook(e) {
+    const file=e.target.files?.[0]; if(!file) return; if(typeof XLSX==='undefined') return toast('Excel library did not load.','error');
+    const reader=new FileReader();
+    reader.onload=()=>{try{
+      const wb=XLSX.read(reader.result,{type:'array'}); const incoming=emptyDB();
+      const workers=sheetRows(wb,'Workers'); if(workers.length&&workers[0].Message!=='No data') incoming.people=workers.map((r,i)=>({id:String(r.ID||r['Worker ID']||`P${i+1}`),name:String(r.Name||r.Worker||`Worker ${i+1}`),cell:String(r.Cell||'Cell 1'),active:String(r.Active||'Yes').toLowerCase()!=='no',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}));
+      const knownIds=new Set(incoming.people.map(p=>p.id));
+      incoming.education=parseAttendanceSheet(sheetRows(wb,'Education'),knownIds,'edu');
+      incoming.service=parseAttendanceSheet(sheetRows(wb,'Service Attendance'),knownIds,'svc');
+      incoming.cleaning=parseAttendanceSheet(sheetRows(wb,'Cleaning'),knownIds,'cln');
+      incoming.finance=parseFinanceSheet(sheetRows(wb,'Tithe Offering'),knownIds);
+      db=incoming; saveLocal(); renderAll(); toast('Excel workbook imported.','success');
+    }catch(err){console.error(err);toast('Could not import this Excel workbook. Use a workbook exported by this dashboard.','error');}}
+    reader.readAsArrayBuffer(file); e.target.value='';
+  }
+  function sheetRows(wb,name) { const ws=wb.Sheets[name]; return ws?XLSX.utils.sheet_to_json(ws,{defval:''}):[]; }
+  function parseAttendanceSheet(rows,knownIds,prefix) { return rows.filter(r=>r['Worker ID']&&knownIds.has(String(r['Worker ID']))&&r.Date).map(r=>({id:String(r['Record ID']||uid(prefix)),personId:String(r['Worker ID']),date:excelDateString(r.Date),session:String(r.Session||''),status:String(r.Status||''),note:String(r.Notes||''),updatedAt:String(r['Updated At']||new Date().toISOString())})); }
+  function parseFinanceSheet(rows,knownIds) { return rows.filter(r=>r['Worker ID']&&knownIds.has(String(r['Worker ID']))&&r.Month).map(r=>({id:String(r['Record ID']||uid('fin')),personId:String(r['Worker ID']),month:String(r.Month).slice(0,7),status:String(r.Status||''),amount:r.Amount===''?'':Number(r.Amount),note:String(r.Notes||''),updatedAt:String(r['Updated At']||new Date().toISOString())})); }
+  function excelDateString(v) { if(typeof v==='number'){const d=XLSX.SSF.parse_date_code(v);return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;} return String(v).slice(0,10); }
+
+  function exportChartPNG(chartId) {
+    const chart=charts[chartId]; if(!chart) return toast('No chart data is available to export.','error');
+    const source=chart.canvas, out=document.createElement('canvas'); out.width=source.width; out.height=source.height; const ctx=out.getContext('2d'); ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,out.width,out.height); ctx.drawImage(source,0,0); const a=document.createElement('a'); a.href=out.toDataURL('image/png',1); a.download=`${chartId}-${today()}.png`; a.click(); toast('Chart PNG exported.','success');
+  }
+
+  function downloadBlob(blob,name) { const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),500); }
+
+  function updateConnectionUI(connected=!!(settings.apiUrl&&settings.apiKey)) { $('#connectionDot').classList.toggle('connected',connected); $('#connectionLabel').textContent=connected?'Google Sheets':'Local mode'; $('#connectionDetail').textContent=connected?'Cloud connection configured':'Saved in this browser'; }
+  async function remoteCall(payload) { const res=await fetch(settings.apiUrl,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({...payload,apiKey:settings.apiKey})}); if(!res.ok)throw new Error(`HTTP ${res.status}`);const data=await res.json();if(!data.ok)throw new Error(data.error||'Unknown server error');return data; }
+  async function syncFromRemote(showMessage=true) { if(!settings.apiUrl||!settings.apiKey)return; showLoading(true,'Syncing with Google Sheets...'); try{const data=await remoteCall({action:'getAll'});if(data.data){db={...emptyDB(),...data.data};METRICS.forEach(m=>{if(!Array.isArray(db[m]))db[m]=[]});saveLocal();renderAll();updateConnectionUI(true);$('#settingsStatus').textContent=`Connected. Last synced ${new Date().toLocaleString('en-ZA')}.`;if(showMessage)toast('Synced with Google Sheets.','success');}}catch(e){updateConnectionUI(false);$('#settingsStatus').textContent='Connection failed: '+e.message;if(showMessage)toast('Could not connect: '+e.message,'error');}finally{showLoading(false);} }
+
+  function showLoading(show,text='Loading...') { $('#loadingText').textContent=text; $('#loadingOverlay').classList.toggle('show',show); }
+  function toast(message,type='') { const el=$('#toast');el.textContent=message;el.className=`toast show ${type}`;clearTimeout(toast.t);toast.t=setTimeout(()=>el.className='toast',3200); }
 
   init();
 })();

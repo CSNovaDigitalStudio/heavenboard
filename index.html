@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#fff7fb" />
-  <title>Heavenly Participation Dashboard</title>
+  <meta name="theme-color" content="#f8f5ff" />
+  <title>Heavenly School Performance Dashboard</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -16,19 +16,17 @@
     <aside class="sidebar" id="sidebar">
       <div class="brand">
         <div class="brand-mark">✦</div>
-        <div>
-          <h1>Heavenly</h1>
-          <p>Participation Tracker</p>
-        </div>
+        <div><h1>Heavenly</h1><p>School Performance</p></div>
       </div>
 
       <nav class="nav-list" aria-label="Main navigation">
         <button class="nav-item active" data-view="dashboard"><span>⌂</span> Dashboard</button>
-        <button class="nav-item" data-view="education"><span>✎</span> Education</button>
+        <button class="nav-item" data-view="education"><span>✎</span> Weekly Education</button>
+        <button class="nav-item" data-view="service"><span>♢</span> Service Attendance</button>
         <button class="nav-item" data-view="cleaning"><span>✧</span> Cleaning Meeting</button>
-        <button class="nav-item" data-view="evangelism"><span>☼</span> Evangelism</button>
-        <button class="nav-item" data-view="finance"><span>◈</span> Tithe & Group Fees</button>
-        <button class="nav-item" data-view="people"><span>♙</span> Workers</button>
+        <button class="nav-item" data-view="finance"><span>◈</span> Tithe & Offering</button>
+        <button class="nav-item" data-view="people"><span>♙</span> Workers & Cells</button>
+        <button class="nav-item" data-view="reports"><span>▤</span> Reports</button>
         <button class="nav-item" data-view="records"><span>≣</span> All Records</button>
         <button class="nav-item" data-view="settings"><span>⚙</span> Settings</button>
       </nav>
@@ -36,10 +34,7 @@
       <div class="sidebar-footer">
         <div class="connection-mini">
           <span class="status-dot" id="connectionDot"></span>
-          <div>
-            <strong id="connectionLabel">Local mode</strong>
-            <small id="connectionDetail">Saved in this browser</small>
-          </div>
+          <div><strong id="connectionLabel">Local mode</strong><small id="connectionDetail">Saved in this browser</small></div>
         </div>
       </div>
     </aside>
@@ -48,16 +43,10 @@
       <header class="topbar">
         <div class="topbar-title-wrap">
           <button class="menu-button" id="menuButton" aria-label="Open menu">☰</button>
-          <div>
-            <p class="eyebrow" id="pageEyebrow">OVERVIEW</p>
-            <h2 id="pageTitle">Dashboard</h2>
-          </div>
+          <div><p class="eyebrow" id="pageEyebrow">OVERVIEW</p><h2 id="pageTitle">Dashboard</h2></div>
         </div>
         <div class="topbar-actions">
-          <div class="search-box">
-            <span>⌕</span>
-            <input id="globalSearch" type="search" placeholder="Search worker..." autocomplete="off" />
-          </div>
+          <div class="search-box"><span>⌕</span><input id="globalSearch" type="search" placeholder="Find worker..." autocomplete="off" /></div>
           <button class="icon-button" id="refreshButton" title="Refresh data">↻</button>
         </div>
       </header>
@@ -66,200 +55,226 @@
         <section class="view active" id="view-dashboard">
           <div class="hero-card">
             <div class="hero-copy">
-              <span class="pill">Weekly workforce overview</span>
-              <h3>Faithful participation, clearly seen.</h3>
-              <p>Track education, cleaning meetings, evangelism, tithe and group fees for your full workforce in one bright dashboard.</p>
+              <span class="pill">School • Cell • Individual</span>
+              <h3>See participation clearly.</h3>
+              <p>Track the full school structure, compare cells, and open the performance of any individual worker.</p>
               <div class="hero-actions">
-                <button class="primary-button" data-jump="education">+ Record participation</button>
-                <button class="secondary-button" id="exportBackupButton">Export backup</button>
+                <button class="primary-button" data-jump="education">+ Update participation</button>
+                <button class="secondary-button" data-jump="reports">Open reports</button>
               </div>
             </div>
             <div class="hero-verse">
               <span class="sparkle">✦</span>
-              <strong>30 workers</strong>
-              <small>One unified view</small>
+              <strong id="heroWorkerCount">30 workers</strong>
+              <small>Across 7 cells</small>
             </div>
           </div>
 
           <div class="filters-card">
-            <div class="filter-group">
-              <label for="filterFrom">From</label>
-              <input type="date" id="filterFrom" />
-            </div>
-            <div class="filter-group">
-              <label for="filterTo">To</label>
-              <input type="date" id="filterTo" />
-            </div>
-            <div class="filter-group">
-              <label for="filterGroup">Group</label>
-              <select id="filterGroup"><option value="all">All groups</option></select>
-            </div>
-            <div class="filter-group grow">
-              <label for="dashboardSearch">Worker</label>
-              <input id="dashboardSearch" type="search" placeholder="Type a name..." />
-            </div>
-            <button class="soft-button" id="clearFiltersButton">Clear filters</button>
+            <div class="filter-group"><label for="filterFrom">From</label><input type="date" id="filterFrom" /></div>
+            <div class="filter-group"><label for="filterTo">To</label><input type="date" id="filterTo" /></div>
+            <div class="filter-group"><label for="filterCell">Cell</label><select id="filterCell"><option value="all">Whole school</option></select></div>
+            <div class="filter-group grow"><label for="filterWorker">Worker</label><select id="filterWorker"><option value="all">All workers</option></select></div>
+            <button class="soft-button" id="clearFiltersButton">Clear</button>
           </div>
 
+          <div class="scope-banner" id="scopeBanner"></div>
           <div class="kpi-grid" id="kpiGrid"></div>
 
           <div class="dashboard-grid">
             <article class="panel span-2">
               <div class="panel-heading">
-                <div><span class="panel-kicker">EDUCATION</span><h3>Weekly participation trend</h3></div>
-                <span class="panel-badge">Wed • Sat • Sun</span>
+                <div><span class="panel-kicker">TREND</span><h3>Weekly overall performance</h3></div>
+                <button class="text-button chart-export" data-chart="weeklyTrendChart">Download PNG ↓</button>
               </div>
-              <div class="chart-wrap tall"><canvas id="educationTrendChart"></canvas></div>
+              <div class="chart-wrap tall"><canvas id="weeklyTrendChart"></canvas></div>
             </article>
 
             <article class="panel">
               <div class="panel-heading">
-                <div><span class="panel-kicker">OVERVIEW</span><h3>Participation mix</h3></div>
+                <div><span class="panel-kicker">CATEGORIES</span><h3>Performance by activity</h3></div>
+                <button class="text-button chart-export" data-chart="categoryChart">PNG ↓</button>
               </div>
-              <div class="chart-wrap"><canvas id="participationMixChart"></canvas></div>
+              <div class="chart-wrap"><canvas id="categoryChart"></canvas></div>
             </article>
 
             <article class="panel">
               <div class="panel-heading">
-                <div><span class="panel-kicker">WORKERS</span><h3>Top participation</h3></div>
+                <div><span class="panel-kicker">CELLS</span><h3>Cell comparison</h3></div>
+                <button class="text-button chart-export" data-chart="cellChart">PNG ↓</button>
               </div>
-              <div class="chart-wrap"><canvas id="topWorkersChart"></canvas></div>
+              <div class="chart-wrap"><canvas id="cellChart"></canvas></div>
             </article>
 
             <article class="panel">
               <div class="panel-heading">
-                <div><span class="panel-kicker">FINANCE</span><h3>Monthly compliance</h3></div>
+                <div><span class="panel-kicker">MONTHLY</span><h3>Tithe & Offering participation</h3></div>
+                <button class="text-button chart-export" data-chart="financeChart">PNG ↓</button>
               </div>
               <div class="chart-wrap"><canvas id="financeChart"></canvas></div>
             </article>
 
             <article class="panel span-2">
               <div class="panel-heading">
-                <div><span class="panel-kicker">ATTENTION</span><h3>Workers needing follow-up</h3></div>
-                <button class="text-button" data-jump="records">View all records →</button>
+                <div><span class="panel-kicker">FOLLOW-UP</span><h3>Workers needing attention</h3></div>
+                <button class="text-button" data-jump="reports">View full report →</button>
               </div>
               <div class="table-scroll compact-table">
-                <table>
-                  <thead><tr><th>Worker</th><th>Group</th><th>Education</th><th>Cleaning</th><th>Evangelism</th><th>Overall</th></tr></thead>
-                  <tbody id="followUpBody"></tbody>
-                </table>
+                <table><thead><tr><th>Worker</th><th>Cell</th><th>Education</th><th>Service</th><th>Cleaning</th><th>Tithe & Offering</th><th>Overall</th></tr></thead><tbody id="followUpBody"></tbody></table>
               </div>
             </article>
           </div>
         </section>
 
         <section class="view" id="view-education">
-          <div class="page-intro">
-            <div><span class="pill lavender">3 times every week</span><h3>Education Participation</h3><p>Record Wednesday, Saturday and Sunday education participation for all workers at once.</p></div>
+          <div class="page-intro split">
+            <div><span class="pill lavender">Continuous • 3 sessions weekly</span><h3>Weekly Education</h3><p>Wednesday 20:30 • Saturday 09:30 • Sunday 14:30</p></div>
+            <div class="schedule-stack"><span>Wed 20:30</span><span>Sat 09:30</span><span>Sun 14:30</span></div>
           </div>
           <div class="entry-panel">
             <div class="entry-toolbar">
               <div class="filter-group"><label>Date</label><input type="date" id="educationDate"></div>
-              <div class="filter-group"><label>Session</label><select id="educationSession"><option>Wednesday</option><option>Saturday</option><option>Sunday</option></select></div>
-              <div class="filter-group grow"><label>Find worker</label><input type="search" id="educationSearch" placeholder="Search name or group..."></div>
+              <div class="filter-group"><label>Session</label><select id="educationSession"><option value="Wednesday 20:30">Wednesday 20:30</option><option value="Saturday 09:30">Saturday 09:30</option><option value="Sunday 14:30">Sunday 14:30</option></select></div>
+              <div class="filter-group"><label>Cell</label><select id="educationCell"><option value="all">All cells</option></select></div>
+              <div class="filter-group grow"><label>Find worker</label><input type="search" id="educationSearch" placeholder="Name or cell..."></div>
               <button class="soft-button" id="educationMarkAll">Mark all present</button>
               <button class="primary-button" id="saveEducation">Save education</button>
             </div>
             <div class="entry-summary" id="educationSummary"></div>
-            <div class="table-scroll"><table class="entry-table"><thead><tr><th>#</th><th>Worker</th><th>Group</th><th>Status</th><th>Notes</th></tr></thead><tbody id="educationBody"></tbody></table></div>
+            <div class="table-scroll"><table class="entry-table"><thead><tr><th>#</th><th>Worker</th><th>Cell</th><th>Status</th><th>Notes</th></tr></thead><tbody id="educationBody"></tbody></table></div>
+          </div>
+        </section>
+
+        <section class="view" id="view-service">
+          <div class="page-intro split">
+            <div><span class="pill blue">2 services weekly</span><h3>Service Attendance</h3><p>Record attendance for Wednesday and Sunday services.</p></div>
+            <div class="schedule-stack"><span>Wednesday</span><span>Sunday</span></div>
+          </div>
+          <div class="entry-panel">
+            <div class="entry-toolbar">
+              <div class="filter-group"><label>Date</label><input type="date" id="serviceDate"></div>
+              <div class="filter-group"><label>Service</label><select id="serviceSession"><option value="Wednesday Service">Wednesday Service</option><option value="Sunday Service">Sunday Service</option></select></div>
+              <div class="filter-group"><label>Cell</label><select id="serviceCell"><option value="all">All cells</option></select></div>
+              <div class="filter-group grow"><label>Find worker</label><input type="search" id="serviceSearch" placeholder="Name or cell..."></div>
+              <button class="soft-button" id="serviceMarkAll">Mark all present</button>
+              <button class="primary-button" id="saveService">Save service</button>
+            </div>
+            <div class="entry-summary" id="serviceSummary"></div>
+            <div class="table-scroll"><table class="entry-table"><thead><tr><th>#</th><th>Worker</th><th>Cell</th><th>Status</th><th>Notes</th></tr></thead><tbody id="serviceBody"></tbody></table></div>
           </div>
         </section>
 
         <section class="view" id="view-cleaning">
-          <div class="page-intro">
-            <div><span class="pill rose">2 times every week</span><h3>Cleaning Meeting Participation</h3><p>Record Wednesday and Sunday cleaning meeting participation with fast batch entry.</p></div>
+          <div class="page-intro split">
+            <div><span class="pill rose">Every Sunday</span><h3>Cleaning Meeting</h3><p>Cleaning meeting is held every Sunday at 09:00.</p></div>
+            <div class="schedule-stack"><span>Sunday 09:00</span></div>
           </div>
           <div class="entry-panel">
             <div class="entry-toolbar">
               <div class="filter-group"><label>Date</label><input type="date" id="cleaningDate"></div>
-              <div class="filter-group"><label>Session</label><select id="cleaningSession"><option>Wednesday</option><option>Sunday</option></select></div>
-              <div class="filter-group grow"><label>Find worker</label><input type="search" id="cleaningSearch" placeholder="Search name or group..."></div>
+              <div class="filter-group"><label>Session</label><select id="cleaningSession"><option value="Sunday 09:00">Sunday 09:00</option></select></div>
+              <div class="filter-group"><label>Cell</label><select id="cleaningCell"><option value="all">All cells</option></select></div>
+              <div class="filter-group grow"><label>Find worker</label><input type="search" id="cleaningSearch" placeholder="Name or cell..."></div>
               <button class="soft-button" id="cleaningMarkAll">Mark all present</button>
               <button class="primary-button" id="saveCleaning">Save cleaning</button>
             </div>
             <div class="entry-summary" id="cleaningSummary"></div>
-            <div class="table-scroll"><table class="entry-table"><thead><tr><th>#</th><th>Worker</th><th>Group</th><th>Status</th><th>Notes</th></tr></thead><tbody id="cleaningBody"></tbody></table></div>
-          </div>
-        </section>
-
-        <section class="view" id="view-evangelism">
-          <div class="page-intro">
-            <div><span class="pill gold">Once every week</span><h3>Evangelism Participation</h3><p>Capture weekly participation, hours served and contacts made.</p></div>
-          </div>
-          <div class="entry-panel">
-            <div class="entry-toolbar">
-              <div class="filter-group"><label>Week date</label><input type="date" id="evangelismDate"></div>
-              <div class="filter-group grow"><label>Find worker</label><input type="search" id="evangelismSearch" placeholder="Search name or group..."></div>
-              <button class="soft-button" id="evangelismMarkAll">Mark all participated</button>
-              <button class="primary-button" id="saveEvangelism">Save evangelism</button>
-            </div>
-            <div class="entry-summary" id="evangelismSummary"></div>
-            <div class="table-scroll"><table class="entry-table"><thead><tr><th>#</th><th>Worker</th><th>Group</th><th>Status</th><th>Hours</th><th>Contacts</th><th>Notes</th></tr></thead><tbody id="evangelismBody"></tbody></table></div>
+            <div class="table-scroll"><table class="entry-table"><thead><tr><th>#</th><th>Worker</th><th>Cell</th><th>Status</th><th>Notes</th></tr></thead><tbody id="cleaningBody"></tbody></table></div>
           </div>
         </section>
 
         <section class="view" id="view-finance">
-          <div class="page-intro">
-            <div><span class="pill mint">Once every month</span><h3>Tithe & Group Fees</h3><p>Track monthly completion and optional amounts for tithe and group fees.</p></div>
+          <div class="page-intro split">
+            <div><span class="pill mint">Once each month</span><h3>Tithe & Offering</h3><p>Record the monthly Tithe & Offering participation together. Amount is optional.</p></div>
+            <div class="schedule-stack"><span>Monthly</span></div>
           </div>
           <div class="entry-panel">
             <div class="entry-toolbar">
               <div class="filter-group"><label>Month</label><input type="month" id="financeMonth"></div>
-              <div class="filter-group grow"><label>Find worker</label><input type="search" id="financeSearch" placeholder="Search name or group..."></div>
-              <button class="primary-button" id="saveFinance">Save monthly finance</button>
+              <div class="filter-group"><label>Cell</label><select id="financeCell"><option value="all">All cells</option></select></div>
+              <div class="filter-group grow"><label>Find worker</label><input type="search" id="financeSearch" placeholder="Name or cell..."></div>
+              <button class="soft-button" id="financeMarkAll">Mark all submitted</button>
+              <button class="primary-button" id="saveFinance">Save monthly record</button>
             </div>
             <div class="entry-summary" id="financeSummary"></div>
-            <div class="table-scroll"><table class="entry-table"><thead><tr><th>#</th><th>Worker</th><th>Group</th><th>Tithe</th><th>Amount</th><th>Group fee</th><th>Amount</th><th>Notes</th></tr></thead><tbody id="financeBody"></tbody></table></div>
+            <div class="table-scroll"><table class="entry-table"><thead><tr><th>#</th><th>Worker</th><th>Cell</th><th>Status</th><th>Amount (R)</th><th>Notes</th></tr></thead><tbody id="financeBody"></tbody></table></div>
           </div>
         </section>
 
         <section class="view" id="view-people">
           <div class="page-intro split">
-            <div><span class="pill blue">Roster</span><h3>30 Workers</h3><p>Rename the placeholders, assign groups and activate/deactivate workers.</p></div>
-            <button class="primary-button" id="savePeople">Save worker roster</button>
+            <div><span class="pill gold">Actual school structure</span><h3>Workers & Cells</h3><p>30 workers arranged in 7 cells. You can edit names, cell assignment and active status.</p></div>
+            <div class="button-row"><button class="soft-button" id="restoreStructure">Restore supplied structure</button><button class="primary-button" id="savePeople">Save roster</button></div>
           </div>
+          <div class="cell-summary-grid" id="cellSummaryGrid"></div>
           <div class="entry-panel">
-            <div class="entry-toolbar"><div class="filter-group grow"><label>Search roster</label><input type="search" id="peopleSearch" placeholder="Search worker or group..."></div><button class="soft-button" id="resetPeople">Reset 30 placeholders</button></div>
-            <div class="table-scroll"><table class="entry-table"><thead><tr><th>#</th><th>Name</th><th>Group</th><th>Active</th></tr></thead><tbody id="peopleBody"></tbody></table></div>
+            <div class="entry-toolbar"><div class="filter-group grow"><label>Find worker</label><input type="search" id="peopleSearch" placeholder="Search worker or cell..."></div></div>
+            <div class="table-scroll"><table class="entry-table"><thead><tr><th>#</th><th>Worker</th><th>Cell</th><th>Status</th><th>Performance</th></tr></thead><tbody id="peopleBody"></tbody></table></div>
           </div>
+        </section>
+
+        <section class="view" id="view-reports">
+          <div class="page-intro split">
+            <div><span class="pill blue">Flexible analysis</span><h3>Performance Reports</h3><p>Switch between school, cell and individual summaries, then export the filtered result.</p></div>
+            <div class="button-row wrap"><button class="secondary-button" id="exportReportCsv">Export CSV</button><button class="primary-button" id="exportExcelButton">Export Excel</button></div>
+          </div>
+          <div class="filters-card">
+            <div class="filter-group"><label>View</label><select id="reportView"><option value="workers">By worker</option><option value="cells">By cell</option><option value="records">Record detail</option></select></div>
+            <div class="filter-group"><label>From</label><input type="date" id="reportFrom"></div>
+            <div class="filter-group"><label>To</label><input type="date" id="reportTo"></div>
+            <div class="filter-group"><label>Cell</label><select id="reportCell"><option value="all">All cells</option></select></div>
+            <div class="filter-group grow"><label>Worker</label><select id="reportWorker"><option value="all">All workers</option></select></div>
+          </div>
+          <div class="report-toolbar"><span id="reportCount"></span><button class="soft-button" id="exportReportChart">Export report chart PNG</button></div>
+          <div class="panel report-chart-panel"><div class="chart-wrap tall"><canvas id="reportChart"></canvas></div></div>
+          <div class="entry-panel"><div class="table-scroll"><table class="entry-table"><thead id="reportHead"></thead><tbody id="reportBody"></tbody></table></div></div>
         </section>
 
         <section class="view" id="view-records">
           <div class="page-intro split">
-            <div><span class="pill blue">History</span><h3>All Records</h3><p>Search, filter and review saved participation records.</p></div>
-            <button class="secondary-button" id="exportCsvButton">Export visible CSV</button>
+            <div><span class="pill lavender">History</span><h3>All Records</h3><p>Search, filter, review and delete saved records.</p></div>
+            <div class="button-row"><button class="secondary-button" id="exportVisibleCsv">Export filtered CSV</button><button class="primary-button" id="exportRecordsExcel">Export Excel</button></div>
           </div>
           <div class="entry-panel">
             <div class="entry-toolbar">
-              <div class="filter-group"><label>Metric</label><select id="recordsMetric"><option value="all">All metrics</option><option value="education">Education</option><option value="cleaning">Cleaning</option><option value="evangelism">Evangelism</option><option value="finance">Finance</option></select></div>
+              <div class="filter-group"><label>Metric</label><select id="recordsMetric"><option value="all">All metrics</option><option value="education">Education</option><option value="service">Service</option><option value="cleaning">Cleaning</option><option value="finance">Tithe & Offering</option></select></div>
               <div class="filter-group"><label>From</label><input type="date" id="recordsFrom"></div>
               <div class="filter-group"><label>To</label><input type="date" id="recordsTo"></div>
-              <div class="filter-group grow"><label>Search</label><input type="search" id="recordsSearch" placeholder="Name, group, status..."></div>
+              <div class="filter-group"><label>Cell</label><select id="recordsCell"><option value="all">All cells</option></select></div>
+              <div class="filter-group grow"><label>Search</label><input type="search" id="recordsSearch" placeholder="Name, cell, status..."></div>
             </div>
-            <div class="table-scroll"><table class="entry-table"><thead><tr><th>Date</th><th>Worker</th><th>Group</th><th>Metric</th><th>Session / Detail</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody id="recordsBody"></tbody></table></div>
+            <div class="entry-summary"><span id="recordsCount"></span></div>
+            <div class="table-scroll"><table class="entry-table"><thead><tr><th>Date</th><th>Worker</th><th>Cell</th><th>Metric</th><th>Session / Detail</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody id="recordsBody"></tbody></table></div>
           </div>
         </section>
 
         <section class="view" id="view-settings">
-          <div class="page-intro"><div><span class="pill lavender">Database</span><h3>Google Sheets Connection</h3><p>The site works immediately in local browser mode. Connect the supplied Google Apps Script backend when you are ready to share the same data across devices.</p></div></div>
+          <div class="page-intro"><div><span class="pill mint">System</span><h3>Settings & Data</h3><p>The dashboard works in this browser immediately. Google Sheets can be connected for shared cloud storage.</p></div></div>
           <div class="settings-grid">
             <article class="panel settings-card">
-              <div class="panel-heading"><div><span class="panel-kicker">CONNECTION</span><h3>Google Apps Script Web App</h3></div></div>
-              <label class="stack-field"><span>Web App URL</span><input id="apiUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec"></label>
-              <label class="stack-field"><span>API Key</span><input id="apiKey" type="password" placeholder="Same key as google-apps-script.gs"></label>
-              <label class="toggle-row"><input type="checkbox" id="autoSync"><span><strong>Auto-sync after saving</strong><small>Keep local cache and Google Sheets together.</small></span></label>
-              <div class="button-row"><button class="primary-button" id="saveConnection">Save & connect</button><button class="soft-button" id="disconnectButton">Use local only</button></div>
+              <span class="panel-kicker">GOOGLE SHEETS</span><h3>Cloud connection</h3>
+              <label>Apps Script Web App URL<input id="apiUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec"></label>
+              <label>Private API key<input id="apiKey" type="password" placeholder="Same key as google-apps-script.gs"></label>
+              <label class="check-label"><input id="autoSync" type="checkbox" checked> Automatically sync saved updates</label>
+              <div class="button-row wrap"><button class="primary-button" id="saveConnection">Save & connect</button><button class="secondary-button" id="disconnectButton">Disconnect</button></div>
               <p class="settings-status" id="settingsStatus">Not connected.</p>
             </article>
+
             <article class="panel settings-card">
-              <div class="panel-heading"><div><span class="panel-kicker">BACKUP</span><h3>Import / Export</h3></div></div>
-              <p class="muted">Create a full JSON backup or restore a backup into this browser.</p>
-              <div class="button-row wrap"><button class="secondary-button" id="settingsExport">Export backup</button><label class="file-button">Import backup<input id="importBackupInput" type="file" accept="application/json,.json"></label></div>
+              <span class="panel-kicker">BACKUP</span><h3>Import / export data</h3>
+              <p>JSON keeps a full dashboard backup. Excel provides editable multi-sheet data for reporting.</p>
+              <div class="button-row wrap"><button class="secondary-button" id="settingsExportJson">Export JSON backup</button><button class="primary-button" id="settingsExportExcel">Export Excel workbook</button></div>
+              <div class="button-row wrap"><label class="file-button">Import JSON<input id="importBackupInput" type="file" accept="application/json,.json"></label><label class="file-button">Import exported Excel<input id="importExcelInput" type="file" accept=".xlsx,.xls"></label></div>
             </article>
+
             <article class="panel settings-card span-2">
-              <div class="panel-heading"><div><span class="panel-kicker">SETUP</span><h3>How the database works</h3></div></div>
-              <ol class="setup-list"><li>Create a Google Sheet and open <strong>Extensions → Apps Script</strong>.</li><li>Paste the supplied <code>google-apps-script.gs</code> into the editor and set your private API key.</li><li>Deploy it as a Web App, copy the Web App URL, then paste the URL and matching key above.</li><li>The backend automatically creates People, Education, Cleaning, Evangelism and Finance tabs.</li></ol>
-              <div class="notice"><strong>Privacy:</strong> participation and tithe information can be sensitive. Keep the Google Sheet private and do not share the Web App URL or API key publicly.</div>
+              <span class="panel-kicker">SCHEDULE</span><h3>Configured recurring activities</h3>
+              <div class="schedule-table">
+                <div><strong>Weekly Education</strong><span>Wednesday 20:30 • Saturday 09:30 • Sunday 14:30</span></div>
+                <div><strong>Service Attendance</strong><span>Wednesday • Sunday</span></div>
+                <div><strong>Cleaning Meeting</strong><span>Sunday 09:00</span></div>
+                <div><strong>Tithe & Offering</strong><span>Once every month</span></div>
+              </div>
             </article>
           </div>
         </section>
@@ -267,10 +282,11 @@
     </main>
   </div>
 
-  <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <div class="loading-overlay" id="loadingOverlay"><div class="loader"></div><p id="loadingText">Loading...</p></div>
+  <div class="toast" id="toast" role="status"></div>
+  <div class="loading-overlay" id="loadingOverlay"><div class="loader"></div><strong id="loadingText">Loading...</strong></div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
