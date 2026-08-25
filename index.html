@@ -8,7 +8,22 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
+<body class="auth-locked">
+  <section class="auth-screen" id="authScreen">
+    <div class="auth-card">
+      <div class="auth-brand"><div class="brand-mark">✦</div><div><h1>Heavenly</h1><p>School Performance</p></div></div>
+      <span class="pill lavender" id="authModePill">SECURE ACCESS</span>
+      <h2 id="authTitle">Sign in to dashboard</h2>
+      <p id="authDescription">Use the account created for you by the school administrator.</p>
+      <form id="authForm" class="auth-form">
+        <label>Username<input id="loginUsername" type="text" autocomplete="username" required></label>
+        <label>Password<input id="loginPassword" type="password" autocomplete="current-password" required></label>
+        <label id="setupCodeWrap" class="hidden">Setup code<input id="setupCode" type="password" autocomplete="off" placeholder="Only required for first administrator"></label>
+        <button class="primary-button auth-submit" id="loginButton" type="submit">Sign in</button>
+      </form>
+      <p class="auth-help" id="authHelp">Checking the shared school database…</p>
+    </div>
+  </section>
   <div class="background-layer" aria-hidden="true"></div>
   <div class="background-wash" aria-hidden="true"></div>
 
@@ -32,9 +47,14 @@
       </nav>
 
       <div class="sidebar-footer">
+        <div class="account-mini">
+          <div class="avatar" id="currentUserAvatar">HS</div>
+          <div class="account-mini-copy"><strong id="currentUserName">Signed in</strong><small id="currentUserRole">Cloud account</small></div>
+          <button class="mini-logout" id="sidebarLogout" title="Sign out">↪</button>
+        </div>
         <div class="connection-mini">
-          <span class="status-dot" id="connectionDot"></span>
-          <div><strong id="connectionLabel">Local mode</strong><small id="connectionDetail">Saved in this browser</small></div>
+          <span class="status-dot connected" id="connectionDot"></span>
+          <div><strong id="connectionLabel">Google Sheets</strong><small id="connectionDetail">Shared cloud database</small></div>
         </div>
       </div>
     </aside>
@@ -249,22 +269,38 @@
         </section>
 
         <section class="view" id="view-settings">
-          <div class="page-intro"><div><span class="pill mint">System</span><h3>Settings & Data</h3><p>The dashboard works in this browser immediately. Google Sheets can be connected for shared cloud storage.</p></div></div>
+          <div class="page-intro"><div><span class="pill mint">System</span><h3>Settings & Access</h3><p>The Google Sheets connection is configured centrally. Users only need their username and password.</p></div></div>
           <div class="settings-grid">
             <article class="panel settings-card">
-              <span class="panel-kicker">GOOGLE SHEETS</span><h3>Cloud connection</h3>
-              <label>Apps Script Web App URL<input id="apiUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec"></label>
-              <label>Private API key<input id="apiKey" type="password" placeholder="Same key as google-apps-script.gs"></label>
-              <label class="check-label"><input id="autoSync" type="checkbox" checked> Automatically sync saved updates</label>
-              <div class="button-row wrap"><button class="primary-button" id="saveConnection">Save & connect</button><button class="secondary-button" id="disconnectButton">Disconnect</button></div>
-              <p class="settings-status" id="settingsStatus">Not connected.</p>
+              <span class="panel-kicker">ACCOUNT</span><h3>Your secure access</h3>
+              <div class="account-summary"><div class="avatar large" id="settingsUserAvatar">HS</div><div><strong id="settingsUserName">—</strong><span id="settingsUserScope">—</span></div></div>
+              <p class="settings-status" id="settingsStatus">Connected to the shared Google Sheets database.</p>
+              <label>New password<input id="newPassword" type="password" autocomplete="new-password" placeholder="At least 8 characters"></label>
+              <label>Confirm new password<input id="confirmPassword" type="password" autocomplete="new-password"></label>
+              <div class="button-row wrap"><button class="primary-button" id="changePassword">Change password</button><button class="secondary-button" id="settingsLogout">Sign out</button></div>
             </article>
 
-            <article class="panel settings-card">
+            <article class="panel settings-card admin-only">
               <span class="panel-kicker">BACKUP</span><h3>Import / export data</h3>
               <p>JSON keeps a full dashboard backup. Excel provides editable multi-sheet data for reporting.</p>
               <div class="button-row wrap"><button class="secondary-button" id="settingsExportJson">Export JSON backup</button><button class="primary-button" id="settingsExportExcel">Export Excel workbook</button></div>
               <div class="button-row wrap"><label class="file-button">Import JSON<input id="importBackupInput" type="file" accept="application/json,.json"></label><label class="file-button">Import exported Excel<input id="importExcelInput" type="file" accept=".xlsx,.xls"></label></div>
+            </article>
+
+            <article class="panel settings-card span-2 admin-only" id="userAccessPanel">
+              <span class="panel-kicker">USER ACCESS</span><h3>Login accounts & roles</h3>
+              <p>Create logins without giving anyone the Apps Script URL or a private API key.</p>
+              <div class="user-form-grid">
+                <input id="accessUserId" type="hidden">
+                <label>Username<input id="accessUsername" type="text" autocomplete="off" placeholder="e.g. ntobeko"></label>
+                <label>Temporary / new password<input id="accessPassword" type="password" autocomplete="new-password" placeholder="Required for new account"></label>
+                <label>Role<select id="accessRole"><option value="worker">Worker</option><option value="cell_leader">Cell leader</option><option value="admin">Administrator</option></select></label>
+                <label>Cell<select id="accessCell"><option value="">Not restricted to a cell</option></select></label>
+                <label>Linked worker<select id="accessPerson"><option value="">No linked worker</option></select></label>
+                <label class="check-label access-active"><input id="accessActive" type="checkbox" checked> Account active</label>
+              </div>
+              <div class="button-row wrap"><button class="primary-button" id="saveAccessUser">Save account</button><button class="secondary-button" id="clearAccessUser">Clear form</button></div>
+              <div class="table-scroll"><table><thead><tr><th>Username</th><th>Role</th><th>Scope</th><th>Status</th><th></th></tr></thead><tbody id="accessUsersBody"></tbody></table></div>
             </article>
 
             <article class="panel settings-card span-2">

@@ -1,8 +1,9 @@
 (() => {
   'use strict';
 
-  const STORAGE_KEY = 'heavenlySchoolPerformanceDB_v2';
-  const SETTINGS_KEY = 'heavenlySchoolPerformanceSettings_v2';
+  const STORAGE_KEY = 'heavenlySchoolPerformanceDB_v3';
+  const AUTH_STORAGE_KEY = 'heavenlySchoolAuth_v3';
+  const API_URL = 'https://script.google.com/macros/s/AKfycbx7-feJcAtkmGalr5SkFRdgRCL7DzGuiyWu2joAAMwMMZ-i9TPXpwk7jXsPs681Y-dBxg/exec';
   const METRICS = ['education', 'service', 'cleaning', 'finance'];
   const TITLES = {
     dashboard: ['OVERVIEW', 'Dashboard'], education: ['WEEKLY INPUT', 'Weekly Education'], service: ['ATTENDANCE', 'Service Attendance'],
@@ -31,7 +32,9 @@
   const monthNow = () => today().slice(0,7);
 
   let db = loadLocal();
-  let settings = loadSettings();
+  let session = loadSession();
+  let accessUsers = [];
+  let appStarted = false;
   let charts = {};
   let currentView = 'dashboard';
   let visibleRecordsCache = [];
@@ -58,13 +61,16 @@
     } catch { return emptyDB(); }
   }
 
-  function loadSettings() {
-    try { return { apiUrl: '', apiKey: '', autoSync: true, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; }
-    catch { return { apiUrl: '', apiKey: '', autoSync: true }; }
+  function loadSession() {
+    try { return JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY) || 'null'); } catch { return null; }
+  }
+
+  function saveSession() {
+    if (session) localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+    else localStorage.removeItem(AUTH_STORAGE_KEY);
   }
 
   function saveLocal() { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); }
-  function saveSettingsLocal() { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }
   function activePeople() { return db.people.filter(p => p.active !== false); }
   function personById(id) { return db.people.find(p => p.id === id) || { id, name: id, cell: '' }; }
   function cellNames() { return [...new Set(activePeople().map(p => p.cell).filter(Boolean))].sort(cellSort); }
@@ -80,16 +86,19 @@
   function scoreClass(score) { return score >= 80 ? 'good' : score >= 60 ? 'warn' : 'bad'; }
   function emptyRow(cols, text='No workers match this filter.') { return `<tr><td colspan="${cols}" class="empty-state">${esc(text)}</td></tr>`; }
 
-  function init() {
-    setDefaultDates();
-    bindNavigation();
-    bindGeneral();
-    bindEntryActions();
-    bindReports();
-    bindSettings();
-    updateConnectionUI();
+  function initApp() {
+    if (!appStarted) {
+      setDefaultDates();
+      bindNavigation();
+      bindGeneral();
+      bindEntryActions();
+      bindReports();
+      bindSettings();
+      appStarted = true;
+    }
+    applyRoleUI();
     renderAll();
-    if (settings.apiUrl && settings.apiKey) syncFromRemote(false);
+    updateConnectionUI(true);
   }
 
   function setDefaultDates() {
@@ -117,10 +126,11 @@
     if (view === 'dashboard') renderDashboard();
     if (view === 'reports') renderReports();
     if (view === 'records') renderRecords();
+    if (view === 'settings' && session?.user?.role === 'admin') loadAccessUsers();
   }
 
   function bindGeneral() {
-    $('#refreshButton').addEventListener('click', () => settings.apiUrl && settings.apiKey ? syncFromRemote(true) : (renderAll(), toast('Dashboard refreshed.')));
+    $('#refreshButton').addEventListener('click', () => syncFromRemote(true));
     $('#globalSearch').addEventListener('input', () => { if (currentView !== 'dashboard') goTo('dashboard'); else renderDashboard(); });
     ['filterFrom','filterTo','filterWorker'].forEach(id => $(`#${id}`).addEventListener('input', renderDashboard));
     $('#filterCell').addEventListener('change', () => { fillWorkerSelect('#filterWorker', $('#filterCell').value); $('#filterWorker').value='all'; renderDashboard(); });
@@ -165,22 +175,17 @@
   }
 
   function bindSettings() {
-    $('#apiUrl').value = settings.apiUrl;
-    $('#apiKey').value = settings.apiKey;
-    $('#autoSync').checked = settings.autoSync;
-    $('#saveConnection').addEventListener('click', async () => {
-      settings.apiUrl = $('#apiUrl').value.trim(); settings.apiKey = $('#apiKey').value.trim(); settings.autoSync = $('#autoSync').checked; saveSettingsLocal();
-      if (!settings.apiUrl || !settings.apiKey) { updateConnectionUI(false); return toast('Enter both the Web App URL and API key.', 'error'); }
-      await syncFromRemote(true);
-    });
-    $('#disconnectButton').addEventListener('click', () => {
-      settings.apiUrl=''; settings.apiKey=''; saveSettingsLocal(); $('#apiUrl').value=''; $('#apiKey').value=''; updateConnectionUI(false); $('#settingsStatus').textContent='Local browser mode enabled.'; toast('Disconnected from Google Sheets.','success');
-    });
-    $('#autoSync').addEventListener('change', e => { settings.autoSync=e.target.checked; saveSettingsLocal(); });
+    $('#changePassword').addEventListener('click', changeOwnPassword);
+    $('#settingsLogout').addEventListener('click', logout);
+    $('#sidebarLogout').addEventListener('click', logout);
     $('#settingsExportJson').addEventListener('click', exportBackup);
     $('#settingsExportExcel').addEventListener('click', () => exportExcelWorkbook(false));
     $('#importBackupInput').addEventListener('change', importBackup);
     $('#importExcelInput').addEventListener('change', importExcelWorkbook);
+    $('#saveAccessUser').addEventListener('click', saveAccessUser);
+    $('#clearAccessUser').addEventListener('click', clearAccessForm);
+    $('#accessUsersBody').addEventListener('click', e => { const btn=e.target.closest('[data-edit-user]'); if(btn) editAccessUser(btn.dataset.editUser); });
+    $('#accessRole').addEventListener('change', updateAccessFormRequirements);
   }
 
   function renderAll() {
@@ -285,7 +290,7 @@
 
   function numOrBlank(v) { return v==='' ? '' : Number(v); }
   function upsertMany(metric,records,keyFn) { const map=new Map(db[metric].map(r=>[keyFn(r),r])); records.forEach(r=>map.set(keyFn(r),r)); db[metric]=[...map.values()]; }
-  async function syncSaved(metric, records) { if(settings.apiUrl&&settings.apiKey&&settings.autoSync){ try{await remoteCall({action:'saveBatch',metric,records});}catch(e){toast(`Saved locally; cloud sync failed: ${e.message}`,'error');} } }
+  async function syncSaved(metric, records) { try{await remoteCall({action:'saveBatch',metric,records});}catch(e){toast(`Cloud save failed: ${e.message}. Refresh before continuing.`,'error');} }
 
   function renderPeople() {
     const q=($('#peopleSearch')?.value||'').toLowerCase();
@@ -312,13 +317,15 @@
     const updates=new Map();
     $$('#peopleBody tr[data-person-id]').forEach(tr=>updates.set(tr.dataset.personId,{name:tr.querySelector('.person-name').value.trim()||tr.dataset.personId,cell:tr.querySelector('.person-cell').value,active:tr.querySelector('.person-active').checked}));
     db.people=db.people.map(p=>updates.has(p.id)?{...p,...updates.get(p.id),updatedAt:new Date().toISOString()}:p); saveLocal(); renderAll();
-    if(settings.apiUrl&&settings.apiKey&&settings.autoSync){try{await remoteCall({action:'savePeople',people:db.people});}catch(e){return toast('Roster saved locally; cloud sync failed.','error');}}
+    try{await remoteCall({action:'savePeople',people:db.people});}catch(e){return toast('Roster saved locally; cloud sync failed: '+e.message,'error');}
     toast('Worker structure saved.','success');
   }
 
-  function restoreStructure() {
+  async function restoreStructure() {
     if(!confirm('Restore the supplied 7-cell worker structure? Existing records stay linked to worker IDs, so only do this if the IDs still represent these workers.')) return;
-    db.people=createPeople(); saveLocal(); renderAll(); toast('Supplied structure restored.','success');
+    db.people=createPeople(); saveLocal(); renderAll();
+    try{ await remoteCall({action:'savePeople',people:db.people}); toast('Supplied structure restored in Google Sheets.','success'); }
+    catch(e){ toast('Structure changed locally, but cloud save failed: '+e.message,'error'); }
   }
 
   function dashboardFilters() { return {from:$('#filterFrom').value,to:$('#filterTo').value,cell:$('#filterCell').value,worker:$('#filterWorker').value,q:$('#globalSearch').value.trim().toLowerCase()}; }
@@ -436,13 +443,13 @@
     const metric=$('#recordsMetric').value, from=$('#recordsFrom').value, to=$('#recordsTo').value, cell=$('#recordsCell').value, q=$('#recordsSearch').value.toLowerCase();
     visibleRecordsCache=allFlatRecords().filter(x=>(metric==='all'||x.metric===metric)&&(cell==='all'||x.cell===cell)&&dateWithin(x.sortDate,from,to)&&(!q||`${x.person} ${x.cell} ${x.metricLabel} ${x.status} ${x.detail} ${x.note}`.toLowerCase().includes(q)));
     $('#recordsCount').textContent=`${visibleRecordsCache.length} filtered record${visibleRecordsCache.length===1?'':'s'}`;
-    $('#recordsBody').innerHTML=visibleRecordsCache.length?visibleRecordsCache.slice(0,1500).map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.person)}</td><td>${esc(x.cell)}</td><td><span class="pill ${x.metric==='finance'?'mint':x.metric==='service'?'blue':x.metric==='cleaning'?'rose':'lavender'}">${esc(x.metricLabel)}</span></td><td>${esc(x.detail)}</td><td>${esc(x.status||'—')}</td><td>${esc(x.note||'—')}</td><td><button class="delete-btn" data-delete="${esc(x.id)}" data-metric="${esc(x.metric)}" title="Delete">×</button></td></tr>`).join(''):emptyRow(8,'No records match these filters.');
+    $('#recordsBody').innerHTML=visibleRecordsCache.length?visibleRecordsCache.slice(0,1500).map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.person)}</td><td>${esc(x.cell)}</td><td><span class="pill ${x.metric==='finance'?'mint':x.metric==='service'?'blue':x.metric==='cleaning'?'rose':'lavender'}">${esc(x.metricLabel)}</span></td><td>${esc(x.detail)}</td><td>${esc(x.status||'—')}</td><td>${esc(x.note||'—')}</td><td>${canDeleteRecords()?`<button class="delete-btn" data-delete="${esc(x.id)}" data-metric="${esc(x.metric)}" title="Delete">×</button>`:''}</td></tr>`).join(''):emptyRow(8,'No records match these filters.');
   }
 
   async function deleteRecord(metric,id) {
     if(!confirm('Delete this record?')) return;
     db[metric]=db[metric].filter(r=>r.id!==id); saveLocal(); renderAll();
-    if(settings.apiUrl&&settings.apiKey&&settings.autoSync){try{await remoteCall({action:'deleteRecord',metric,id});}catch(e){return toast('Deleted locally, but cloud delete failed.','error');}}
+    try{await remoteCall({action:'deleteRecord',metric,id});}catch(e){return toast('Deleted locally, but cloud delete failed: '+e.message,'error');}
     toast('Record deleted.','success');
   }
 
@@ -454,8 +461,15 @@
   function importBackup(e) {
     const file=e.target.files?.[0]; if(!file) return;
     const reader=new FileReader();
-    reader.onload=()=>{try{const parsed=JSON.parse(reader.result);const incoming=parsed.data||parsed;if(!incoming.people||!Array.isArray(incoming.people))throw new Error('Invalid backup');db={...emptyDB(),...incoming};METRICS.forEach(m=>{if(!Array.isArray(db[m]))db[m]=[]});saveLocal();renderAll();toast('Backup imported.','success');}catch(err){toast('Could not import this backup.','error');}};
+    reader.onload=async()=>{try{const parsed=JSON.parse(reader.result);const incoming=parsed.data||parsed;if(!incoming.people||!Array.isArray(incoming.people))throw new Error('Invalid backup');db={...emptyDB(),...incoming};METRICS.forEach(m=>{if(!Array.isArray(db[m]))db[m]=[]});saveLocal();renderAll();await pushFullDatabase();toast('Backup imported to the shared database.','success');}catch(err){toast('Could not import this backup: '+err.message,'error');}};
     reader.readAsText(file); e.target.value='';
+  }
+
+
+  async function pushFullDatabase() {
+    if(session?.user?.role!=='admin') throw new Error('Administrator access required.');
+    await remoteCall({action:'savePeople',people:db.people});
+    for (const metric of METRICS) await remoteCall({action:'replaceMetric',metric,records:db[metric]});
   }
 
   function exportVisibleRecordsCSV() { renderRecords(); const rows=visibleRecordsCache.map(flatExportRow); exportCSVRows(rows,`filtered-records-${today()}.csv`); }
@@ -497,7 +511,7 @@
   function importExcelWorkbook(e) {
     const file=e.target.files?.[0]; if(!file) return; if(typeof XLSX==='undefined') return toast('Excel library did not load.','error');
     const reader=new FileReader();
-    reader.onload=()=>{try{
+    reader.onload=async()=>{try{
       const wb=XLSX.read(reader.result,{type:'array'}); const incoming=emptyDB();
       const workers=sheetRows(wb,'Workers'); if(workers.length&&workers[0].Message!=='No data') incoming.people=workers.map((r,i)=>({id:String(r.ID||r['Worker ID']||`P${i+1}`),name:String(r.Name||r.Worker||`Worker ${i+1}`),cell:String(r.Cell||'Cell 1'),active:String(r.Active||'Yes').toLowerCase()!=='no',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}));
       const knownIds=new Set(incoming.people.map(p=>p.id));
@@ -505,8 +519,8 @@
       incoming.service=parseAttendanceSheet(sheetRows(wb,'Service Attendance'),knownIds,'svc');
       incoming.cleaning=parseAttendanceSheet(sheetRows(wb,'Cleaning'),knownIds,'cln');
       incoming.finance=parseFinanceSheet(sheetRows(wb,'Tithe Offering'),knownIds);
-      db=incoming; saveLocal(); renderAll(); toast('Excel workbook imported.','success');
-    }catch(err){console.error(err);toast('Could not import this Excel workbook. Use a workbook exported by this dashboard.','error');}}
+      db=incoming; saveLocal(); renderAll(); await pushFullDatabase(); toast('Excel workbook imported to the shared database.','success');
+    }catch(err){console.error(err);toast('Could not import this Excel workbook: '+err.message,'error');}}
     reader.readAsArrayBuffer(file); e.target.value='';
   }
   function sheetRows(wb,name) { const ws=wb.Sheets[name]; return ws?XLSX.utils.sheet_to_json(ws,{defval:''}):[]; }
@@ -521,12 +535,162 @@
 
   function downloadBlob(blob,name) { const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),500); }
 
-  function updateConnectionUI(connected=!!(settings.apiUrl&&settings.apiKey)) { $('#connectionDot').classList.toggle('connected',connected); $('#connectionLabel').textContent=connected?'Google Sheets':'Local mode'; $('#connectionDetail').textContent=connected?'Cloud connection configured':'Saved in this browser'; }
-  async function remoteCall(payload) { const res=await fetch(settings.apiUrl,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({...payload,apiKey:settings.apiKey})}); if(!res.ok)throw new Error(`HTTP ${res.status}`);const data=await res.json();if(!data.ok)throw new Error(data.error||'Unknown server error');return data; }
-  async function syncFromRemote(showMessage=true) { if(!settings.apiUrl||!settings.apiKey)return; showLoading(true,'Syncing with Google Sheets...'); try{const data=await remoteCall({action:'getAll'});if(data.data){db={...emptyDB(),...data.data};METRICS.forEach(m=>{if(!Array.isArray(db[m]))db[m]=[]});saveLocal();renderAll();updateConnectionUI(true);$('#settingsStatus').textContent=`Connected. Last synced ${new Date().toLocaleString('en-ZA')}.`;if(showMessage)toast('Synced with Google Sheets.','success');}}catch(e){updateConnectionUI(false);$('#settingsStatus').textContent='Connection failed: '+e.message;if(showMessage)toast('Could not connect: '+e.message,'error');}finally{showLoading(false);} }
+  function updateConnectionUI(connected=true) {
+    $('#connectionDot').classList.toggle('connected',connected);
+    $('#connectionLabel').textContent=connected?'Google Sheets':'Offline';
+    $('#connectionDetail').textContent=connected?'Shared cloud database':'Connection unavailable';
+  }
+
+  async function apiFetch(payload, authenticated=true) {
+    const body = authenticated ? {...payload, sessionToken:session?.token||''} : payload;
+    const res=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data=await res.json();
+    if(!data.ok) {
+      if (data.code==='AUTH_REQUIRED' || data.code==='SESSION_EXPIRED') forceSignedOut();
+      throw new Error(data.error||'Unknown server error');
+    }
+    return data;
+  }
+
+  const remoteCall = payload => apiFetch(payload,true);
+
+  async function syncFromRemote(showMessage=true) {
+    if(!session?.token) return false;
+    showLoading(true,'Syncing with Google Sheets...');
+    try{
+      const data=await remoteCall({action:'getAll'});
+      if(data.data){
+        db={...emptyDB(),...data.data}; METRICS.forEach(m=>{if(!Array.isArray(db[m]))db[m]=[]}); saveLocal(); renderAll(); updateConnectionUI(true);
+        if($('#settingsStatus')) $('#settingsStatus').textContent=`Connected. Last synced ${new Date().toLocaleString('en-ZA')}.`;
+        if(showMessage) toast('Synced with Google Sheets.','success');
+        return true;
+      }
+      return false;
+    }catch(e){ updateConnectionUI(false); if($('#settingsStatus')) $('#settingsStatus').textContent='Connection failed: '+e.message; if(showMessage) toast('Could not connect: '+e.message,'error'); return false; }
+    finally{showLoading(false);}
+  }
+
+  function roleLabel(role) { return ({admin:'Administrator',cell_leader:'Cell leader',worker:'Worker'})[role]||role; }
+  function canDeleteRecords() { return ['admin','cell_leader'].includes(session?.user?.role); }
+
+  function applyRoleUI() {
+    const u=session?.user; if(!u) return;
+    const role=u.role;
+    $$('.admin-only').forEach(el=>el.classList.toggle('hidden',role!=='admin'));
+    $$('.nav-item').forEach(el=>{
+      const v=el.dataset.view;
+      const hide = role==='worker' && ['education','service','cleaning','finance','people'].includes(v) || role==='cell_leader' && v==='people';
+      el.classList.toggle('hidden',hide);
+    });
+    const display=u.displayName||u.username;
+    $('#currentUserName').textContent=display; $('#currentUserRole').textContent=roleLabel(role); $('#currentUserAvatar').textContent=initials(display)||'HS';
+    $('#settingsUserName').textContent=display; $('#settingsUserAvatar').textContent=initials(display)||'HS';
+    $('#settingsUserScope').textContent = role==='admin'?'Whole school access':role==='cell_leader'?`${u.cell} access`:'Own performance only';
+    $('#settingsStatus').textContent='Connected to the shared Google Sheets database.';
+    if(role==='admin') populateAccessSelectors();
+  }
+
+  function populateAccessSelectors() {
+    const cells=cellNames();
+    const cell=$('#accessCell'), person=$('#accessPerson');
+    const cv=cell.value, pv=person.value;
+    cell.innerHTML='<option value="">Not restricted to a cell</option>'+cells.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+    person.innerHTML='<option value="">No linked worker</option>'+activePeople().slice().sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${esc(p.id)}">${esc(p.name)} — ${esc(p.cell)}</option>`).join('');
+    if([...cell.options].some(o=>o.value===cv)) cell.value=cv; if([...person.options].some(o=>o.value===pv)) person.value=pv;
+  }
+
+  function updateAccessFormRequirements() {
+    const role=$('#accessRole').value;
+    $('#accessCell').disabled=role==='admin'; $('#accessPerson').disabled=role!=='worker';
+    if(role==='admin') { $('#accessCell').value=''; $('#accessPerson').value=''; }
+    if(role==='cell_leader') $('#accessPerson').value='';
+  }
+
+  async function loadAccessUsers() {
+    if(session?.user?.role!=='admin') return;
+    try{ const data=await remoteCall({action:'listUsers'}); accessUsers=data.users||[]; renderAccessUsers(); }
+    catch(e){ toast('Could not load user accounts: '+e.message,'error'); }
+  }
+
+  function renderAccessUsers() {
+    $('#accessUsersBody').innerHTML=accessUsers.length?accessUsers.map(u=>`<tr><td><strong>${esc(u.username)}</strong><br><small>${esc(u.displayName||'')}</small></td><td><span class="role-badge ${esc(u.role)}">${esc(roleLabel(u.role))}</span></td><td>${esc(u.role==='admin'?'Whole school':u.role==='cell_leader'?(u.cell||'No cell'):(u.personName||u.personId||'Unlinked'))}</td><td>${u.active!==false?'Active':'Disabled'}</td><td><button class="text-button" data-edit-user="${esc(u.id)}">Edit</button></td></tr>`).join(''):emptyRow(5,'No login accounts found.');
+  }
+
+  function clearAccessForm() {
+    $('#accessUserId').value=''; $('#accessUsername').value=''; $('#accessPassword').value=''; $('#accessRole').value='worker'; $('#accessCell').value=''; $('#accessPerson').value=''; $('#accessActive').checked=true; updateAccessFormRequirements();
+  }
+
+  function editAccessUser(id) {
+    const u=accessUsers.find(x=>x.id===id); if(!u) return;
+    $('#accessUserId').value=u.id; $('#accessUsername').value=u.username; $('#accessPassword').value=''; $('#accessRole').value=u.role; $('#accessCell').value=u.cell||''; $('#accessPerson').value=u.personId||''; $('#accessActive').checked=u.active!==false; updateAccessFormRequirements(); window.scrollTo({top:document.getElementById('userAccessPanel').offsetTop-90,behavior:'smooth'});
+  }
+
+  async function saveAccessUser() {
+    if(session?.user?.role!=='admin') return;
+    const payload={action:'saveUser',id:$('#accessUserId').value.trim(),username:$('#accessUsername').value.trim(),password:$('#accessPassword').value,role:$('#accessRole').value,cell:$('#accessCell').value,personId:$('#accessPerson').value,active:$('#accessActive').checked};
+    if(!payload.username) return toast('Enter a username.','error');
+    if(!payload.id && payload.password.length<8) return toast('New accounts need a password of at least 8 characters.','error');
+    try{ await remoteCall(payload); clearAccessForm(); await loadAccessUsers(); toast('Login account saved.','success'); }catch(e){ toast('Could not save account: '+e.message,'error'); }
+  }
+
+  async function changeOwnPassword() {
+    const a=$('#newPassword').value, b=$('#confirmPassword').value;
+    if(a.length<8) return toast('Password must be at least 8 characters.','error'); if(a!==b) return toast('Passwords do not match.','error');
+    try{ await remoteCall({action:'changePassword',password:a}); $('#newPassword').value=''; $('#confirmPassword').value=''; toast('Password changed.','success'); }catch(e){ toast('Could not change password: '+e.message,'error'); }
+  }
+
+  async function logout() {
+    try{ if(session?.token) await remoteCall({action:'logout'}); }catch{}
+    forceSignedOut();
+  }
+
+  function forceSignedOut() {
+    session=null; saveSession(); localStorage.removeItem(STORAGE_KEY); db=emptyDB();
+    document.body.classList.add('auth-locked'); $('#authScreen').classList.remove('hidden'); $('#loginPassword').value=''; $('#authHelp').textContent='Please sign in.';
+  }
+
+  async function enterApp(newSession) {
+    if(newSession){session=newSession;saveSession();}
+    document.body.classList.add('auth-locked'); $('#authScreen').classList.remove('hidden');
+    db=emptyDB(); initApp();
+    $('#authHelp').textContent='Loading your permitted school data…';
+    const ok=await syncFromRemote(false);
+    if(!ok){ $('#authHelp').textContent='Could not load your school data. Check the Apps Script deployment and try signing in again.'; $('#authHelp').classList.add('error'); return; }
+    applyRoleUI(); document.body.classList.remove('auth-locked'); $('#authScreen').classList.add('hidden');
+    if(session?.user?.role==='admin') loadAccessUsers();
+  }
+
+  async function bootAuth() {
+    $('#authForm').addEventListener('submit', handleAuthSubmit);
+    $('#authHelp').textContent='Connecting to the shared school database…';
+    try{
+      const status=await apiFetch({action:'status'},false);
+      setAuthSetupMode(!!status.setupRequired);
+      if(session?.token && !status.setupRequired){
+        try{ const who=await remoteCall({action:'whoAmI'}); session.user=who.user; saveSession(); return enterApp(); }catch{}
+      }
+      $('#authHelp').textContent=status.setupRequired?'Create the first administrator account. This only happens once.':'Enter your assigned username and password.';
+    }catch(e){ $('#authHelp').textContent='Could not reach the shared database. '+e.message; $('#authHelp').classList.add('error'); }
+  }
+
+  function setAuthSetupMode(setup) {
+    $('#authForm').dataset.mode=setup?'bootstrap':'login'; $('#setupCodeWrap').classList.toggle('hidden',!setup);
+    $('#authModePill').textContent=setup?'FIRST-TIME SETUP':'SECURE ACCESS'; $('#authTitle').textContent=setup?'Create administrator account':'Sign in to dashboard';
+    $('#authDescription').textContent=setup?'Set the first admin login for the whole school. After this, create worker and cell-leader accounts in Settings.':'Use the account created for you by the school administrator.'; $('#loginButton').textContent=setup?'Create administrator':'Sign in';
+  }
+
+  async function handleAuthSubmit(e) {
+    e.preventDefault(); const username=$('#loginUsername').value.trim(), password=$('#loginPassword').value, setup=$('#authForm').dataset.mode==='bootstrap';
+    if(!username||!password) return; $('#loginButton').disabled=true; $('#authHelp').classList.remove('error','success'); $('#authHelp').textContent=setup?'Creating administrator…':'Signing in…';
+    try{
+      const payload=setup?{action:'bootstrap',username,password,setupCode:$('#setupCode').value}:{action:'login',username,password};
+      const data=await apiFetch(payload,false); $('#authHelp').classList.add('success'); $('#authHelp').textContent='Access granted.'; await enterApp({token:data.sessionToken,user:data.user});
+    }catch(err){ $('#authHelp').classList.add('error'); $('#authHelp').textContent=err.message; } finally { $('#loginButton').disabled=false; }
+  }
 
   function showLoading(show,text='Loading...') { $('#loadingText').textContent=text; $('#loadingOverlay').classList.toggle('show',show); }
   function toast(message,type='') { const el=$('#toast');el.textContent=message;el.className=`toast show ${type}`;clearTimeout(toast.t);toast.t=setTimeout(()=>el.className='toast',3200); }
 
-  init();
+  bootAuth();
 })();
