@@ -663,29 +663,25 @@
 
   async function bootAuth() {
     $('#authForm').addEventListener('submit', handleAuthSubmit);
+    $('#authForm').dataset.mode='login';
     $('#authHelp').textContent='Connecting to the shared school database…';
     try{
-      const status=await apiFetch({action:'status'},false);
-      setAuthSetupMode(!!status.setupRequired);
-      if(session?.token && !status.setupRequired){
+      await apiFetch({action:'status'},false);
+      if(session?.token){
         try{ const who=await remoteCall({action:'whoAmI'}); session.user=who.user; saveSession(); return enterApp(); }catch{}
       }
-      $('#authHelp').textContent=status.setupRequired?'Create the first administrator account. This only happens once.':'Enter your assigned username and password.';
+      $('#authHelp').textContent='Enter your assigned username and password.';
     }catch(e){ $('#authHelp').textContent='Could not reach the shared database. '+e.message; $('#authHelp').classList.add('error'); }
   }
 
-  function setAuthSetupMode(setup) {
-    $('#authForm').dataset.mode=setup?'bootstrap':'login'; $('#setupCodeWrap').classList.toggle('hidden',!setup);
-    $('#authModePill').textContent=setup?'FIRST-TIME SETUP':'SECURE ACCESS'; $('#authTitle').textContent=setup?'Create administrator account':'Sign in to dashboard';
-    $('#authDescription').textContent=setup?'Set the first admin login for the whole school. After this, create worker and cell-leader accounts in Settings.':'Use the account created for you by the school administrator.'; $('#loginButton').textContent=setup?'Create administrator':'Sign in';
-  }
-
   async function handleAuthSubmit(e) {
-    e.preventDefault(); const username=$('#loginUsername').value.trim(), password=$('#loginPassword').value, setup=$('#authForm').dataset.mode==='bootstrap';
-    if(!username||!password) return; $('#loginButton').disabled=true; $('#authHelp').classList.remove('error','success'); $('#authHelp').textContent=setup?'Creating administrator…':'Signing in…';
+    e.preventDefault();
+    const username=$('#loginUsername').value.trim(), password=$('#loginPassword').value;
+    if(!username||!password) return;
+    $('#loginButton').disabled=true; $('#authHelp').classList.remove('error','success'); $('#authHelp').textContent='Signing in…';
     try{
-      const payload=setup?{action:'bootstrap',username,password,setupCode:$('#setupCode').value}:{action:'login',username,password};
-      const data=await apiFetch(payload,false); $('#authHelp').classList.add('success'); $('#authHelp').textContent='Access granted.'; await enterApp({token:data.sessionToken,user:data.user});
+      const data=await apiFetch({action:'login',username,password},false);
+      $('#authHelp').classList.add('success'); $('#authHelp').textContent='Access granted.'; await enterApp({token:data.sessionToken,user:data.user});
     }catch(err){ $('#authHelp').classList.add('error'); $('#authHelp').textContent=err.message; } finally { $('#loginButton').disabled=false; }
   }
 
