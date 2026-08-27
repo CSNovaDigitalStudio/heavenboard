@@ -4,7 +4,7 @@ This build is designed for **GitHub Pages + Google Sheets + Google Apps Script**
 
 The Google Apps Script URL is already configured in `app.js`:
 
-`https://script.google.com/macros/s/AKfycbx7-feJcAtkmGalr5SkFRdgRCL7DzGuiyWu2joAAMwMMZ-i9TPXpwk7jXsPs681Y-dBxg/exec`
+`https://script.google.com/macros/s/AKfycby5p_eTx-p2P_c8Ah44bYvYeWn07palDn1Nj7Cf2jUKbK_tCDeQ8x0CDTBwIlyfTLtS8w/exec`
 
 Users do **not** enter this URL and do **not** receive an API key. They only sign in with a username and password created by an administrator.
 

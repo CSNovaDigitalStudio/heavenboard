@@ -3,7 +3,7 @@
 
   const STORAGE_KEY = 'heavenlySchoolPerformanceDB_v3';
   const AUTH_STORAGE_KEY = 'heavenlySchoolAuth_v3';
-  const API_URL = 'https://script.google.com/macros/s/AKfycbx7-feJcAtkmGalr5SkFRdgRCL7DzGuiyWu2joAAMwMMZ-i9TPXpwk7jXsPs681Y-dBxg/exec';
+  const API_URL = 'https://script.google.com/macros/s/AKfycby5p_eTx-p2P_c8Ah44bYvYeWn07palDn1Nj7Cf2jUKbK_tCDeQ8x0CDTBwIlyfTLtS8w/exec';
   const METRICS = ['education', 'service', 'cleaning', 'finance'];
   const TITLES = {
     dashboard: ['OVERVIEW', 'Dashboard'], education: ['WEEKLY INPUT', 'Weekly Education'], service: ['ATTENDANCE', 'Service Attendance'],
@@ -543,7 +543,7 @@
 
   async function apiFetch(payload, authenticated=true) {
     const body = authenticated ? {...payload, sessionToken:session?.token||''} : payload;
-    const res=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
+    const res=await fetch(API_URL,{method:'POST',redirect:'follow',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
     const data=await res.json();
     if(!data.ok) {
