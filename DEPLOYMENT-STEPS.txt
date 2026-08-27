@@ -1,0 +1,34 @@
+HEAVENLY SCHOOL DASHBOARD — DEPLOYMENT STEPS
+
+1. GOOGLE APPS SCRIPT
+   - Open your existing Google Sheet.
+   - Extensions > Apps Script.
+   - Replace the old code with google-apps-script.gs from this ZIP.
+   - Deploy > Manage deployments.
+   - Edit the EXISTING Web App deployment.
+   - Select New version and Deploy.
+   - Keep the existing /exec URL.
+
+2. GITHUB
+   - Replace your existing dashboard files with index.html, styles.css, app.js and the assets folder.
+   - The Apps Script URL is already built into app.js.
+
+3. PRE-BUILT ADMIN LOGIN
+   Username: admin
+   Password: Heavenly@2026
+
+   Sign in with this account first. Then go to Settings > Security and change the administrator password.
+
+4. CREATE OTHER USERS
+   - Settings > Login accounts & roles.
+   - Create Administrator, Cell leader, or Worker accounts.
+
+ACCESS RULES
+- Administrator: whole school + all editing + user management.
+- Cell leader: assigned cell only; can update that cell.
+- Worker: own linked performance only; view-only.
+
+NORMAL USERS ONLY NEED:
+- The GitHub Pages website link.
+- Their username.
+- Their password.

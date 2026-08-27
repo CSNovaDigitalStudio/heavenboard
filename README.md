@@ -1,96 +1,67 @@
-# Heavenly School Performance Dashboard
+# Heavenly School Performance Dashboard — Secure Shared Version
 
-A responsive school participation dashboard built around the supplied **7-cell / 30-worker structure**.
+This build is designed for **GitHub Pages + Google Sheets + Google Apps Script**.
 
-## Included structure
+The Google Apps Script URL is already configured in `app.js`:
 
-- Cell 1 — 4 workers
-- Cell 2 — 3 workers
-- Cell 3 — 5 workers
-- Cell 04 — 5 workers
-- Cell 05 — 4 workers
-- Cell 06 — 4 workers
-- Cell 7 — 5 workers
-- Total — 30 workers
+`https://script.google.com/macros/s/AKfycbx7-feJcAtkmGalr5SkFRdgRCL7DzGuiyWu2joAAMwMMZ-i9TPXpwk7jXsPs681Y-dBxg/exec`
 
-The actual names supplied are preloaded in the website, Google Sheets backend seed, and Excel template.
+Users do **not** enter this URL and do **not** receive an API key. They only sign in with a username and password created by an administrator.
+
+## Important: update your existing Apps Script deployment first
+
+1. Open the Google Sheet currently attached to your dashboard.
+2. Go to **Extensions → Apps Script**.
+3. Replace the old Apps Script code with the complete contents of `google-apps-script.gs` from this package.
+4. Click **Deploy → Manage deployments**.
+5. Edit your **existing Web app deployment**.
+6. Under Version choose **New version**, then deploy it.
+7. Keep the existing deployment instead of making a different deployment. This preserves the `/exec` URL already configured in the website.
+8. Ensure the Web app still executes as you and is accessible to the people who need to use the dashboard.
+
+## Pre-built administrator login
+
+The backend automatically creates one administrator account the first time it runs:
+
+- **Username:** `admin`
+- **Password:** `Heavenly@2026`
+
+There is no first-time setup screen and no setup code. Sign in with the account above, then change the administrator password under **Settings → Security**.
+
+## Creating logins for workers
+
+Sign in as Administrator and open:
+
+**Settings → Login accounts & roles**
+
+You can create:
+
+- **Administrator** — whole-school access, editing, user management, imports and backups.
+- **Cell leader** — receives only the people and records in the assigned cell and can update that cell.
+- **Worker** — receives only their own linked performance data and has view-only access.
+
+A worker only needs the GitHub Pages website URL plus their username and password.
+
+## What is stored where
+
+- GitHub Pages: HTML, CSS, JavaScript and images.
+- Google Apps Script: authentication and permission enforcement.
+- Google Sheets: workers, participation records and hashed login credentials.
+- The browser keeps only a temporary local copy of the currently signed-in user's permitted data. It is cleared on sign-out.
+
+Passwords are not stored as plain text in the Google Sheet. They are salted and hashed before storage.
 
 ## Tracked activities
 
-1. **Weekly Education** — continuous
-   - Wednesday 20:30
-   - Saturday 09:30
-   - Sunday 14:30
-2. **Tithe & Offering** — recorded together once per month
-3. **Service Attendance** — Wednesday and Sunday
-4. **Cleaning Meeting** — Sunday 09:00
+- Weekly Education — Wednesday 20:30, Saturday 09:30, Sunday 14:30.
+- Service Attendance — Wednesday and Sunday.
+- Cleaning Meeting — Sunday 09:00.
+- Tithe & Offering — once per month.
 
-## Performance views
+## Data and reporting
 
-The Dashboard and Reports screens support:
+The dashboard includes school/cell/individual performance views, filters, PNG chart export, CSV export, Excel export, Excel import, JSON backup, and record history.
 
-- Whole-school performance
-- Performance by cell
-- Individual worker performance
-- Date-range filtering
-- Cell and worker filtering
-- Weekly trend chart
-- Activity/category comparison
-- Cell comparison
-- Monthly Tithe & Offering performance
-- Follow-up list for low participation
-- Detailed record history
+## GitHub Pages
 
-Performance percentages use recorded, non-excused entries. `Present` counts positively for attendance activities, and `Submitted` counts positively for Tithe & Offering.
-
-## Updating data
-
-Use the four input screens to batch update workers. You can filter to one cell before saving. The **Workers & Cells** screen allows changes to names, cell assignment, and active status.
-
-Data works immediately in browser Local Mode using `localStorage`.
-
-## Export options
-
-- Individual charts can be downloaded as PNG images.
-- Reports can be exported as CSV.
-- Filtered record history can be exported as CSV or Excel.
-- A full multi-sheet Excel workbook can be exported from Settings.
-- A filtered Excel workbook can be exported from Reports.
-- Full JSON backup / restore is available.
-- Excel files exported by this dashboard can be imported again for bulk updates.
-
-The Excel workbook contains:
-
-- Workers
-- Education
-- Service Attendance
-- Cleaning
-- Tithe Offering
-- Performance Summary
-
-## Connect to Google Sheets
-
-1. Create a new Google Sheet.
-2. Open **Extensions → Apps Script**.
-3. Replace the default code with all contents of `google-apps-script.gs`.
-4. Change `API_KEY` at the top to a long private value.
-5. Save the Apps Script project.
-6. Deploy it as a **Web app**.
-7. Copy the `/exec` Web App URL.
-8. In this website open **Settings**.
-9. Paste the Web App URL and the same API key.
-10. Click **Save & connect**.
-
-The backend creates these tabs automatically: `People`, `Education`, `Service`, `Cleaning`, and `Finance`.
-
-> If you used the older dashboard schema, use a fresh Google Sheet or back up the old sheet first. The new backend uses a different schema.
-
-## Hosting
-
-The project is static HTML/CSS/JavaScript and can be hosted on GitHub Pages, cPanel, Netlify, Cloudflare Pages, or a similar static host.
-
-`Chart.js` and `SheetJS` are loaded from jsDelivr, so internet access is required for charts and Excel import/export.
-
-## Privacy
-
-This dashboard can contain religious attendance and financial-participation information. Keep any connected Google Sheet private and only grant access to authorised users.
+Upload the website contents so that `index.html` is at the repository's published root. The secure backend script itself belongs in Google Apps Script; `google-apps-script.gs` is included in the ZIP as your deployable backend source.
