@@ -1,4 +1,4 @@
-# Heavenly School Performance Dashboard — Secure Shared Version
+# MOT Theology Performance Dashboard — Secure Shared Version
 
 This build is designed for **GitHub Pages + Google Sheets + Google Apps Script**.
 
@@ -36,7 +36,7 @@ Sign in as Administrator and open:
 
 You can create:
 
-- **Administrator** — whole-school access, editing, user management, imports and backups.
+- **Administrator** — whole-Theology access, editing, user management, imports and backups.
 - **Cell leader** — receives only the people and records in the assigned cell and can update that cell.
 - **Worker** — receives only their own linked performance data and has view-only access.
 
@@ -60,7 +60,7 @@ Passwords are not stored as plain text in the Google Sheet. They are salted and 
 
 ## Data and reporting
 
-The dashboard includes school/cell/individual performance views, filters, PNG chart export, CSV export, Excel export, Excel import, JSON backup, and record history.
+The dashboard includes Theology/cell/individual performance views, filters, PNG chart export, CSV export, Excel export, Excel import, JSON backup, and record history.
 
 ## GitHub Pages
 

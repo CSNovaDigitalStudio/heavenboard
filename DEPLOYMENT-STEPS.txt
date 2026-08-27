@@ -1,4 +1,4 @@
-HEAVENLY SCHOOL DASHBOARD — DEPLOYMENT STEPS
+MOT THEOLOGY DASHBOARD — DEPLOYMENT STEPS
 
 1. GOOGLE APPS SCRIPT
    - Open your existing Google Sheet.
@@ -24,7 +24,7 @@ HEAVENLY SCHOOL DASHBOARD — DEPLOYMENT STEPS
    - Create Administrator, Cell leader, or Worker accounts.
 
 ACCESS RULES
-- Administrator: whole school + all editing + user management.
+- Administrator: whole Theology + all editing + user management.
 - Cell leader: assigned cell only; can update that cell.
 - Worker: own linked performance only; view-only.
 

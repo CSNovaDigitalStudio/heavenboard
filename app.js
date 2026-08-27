@@ -203,7 +203,7 @@
     const targets = ['#filterCell','#educationCell','#serviceCell','#cleaningCell','#financeCell','#reportCell','#recordsCell'];
     targets.forEach(sel => {
       const el=$(sel); const current=el.value;
-      el.innerHTML = `<option value="all">${sel==='#filterCell'?'Whole school':'All cells'}</option>` + cells.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+      el.innerHTML = `<option value="all">${sel==='#filterCell'?'Whole Theology':'All cells'}</option>` + cells.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
       if ([...el.options].some(o=>o.value===current)) el.value=current;
     });
     fillWorkerSelect('#filterWorker', $('#filterCell').value || 'all');
@@ -351,7 +351,7 @@
     if(!$('#filterCell')) return;
     const f=dashboardFilters(), people=dashboardPeople(), perf=aggregatePerformance(people.map(p=>p.id),f.from,f.to);
     const scopePerson=f.worker!=='all'?personById(f.worker):null;
-    const scope = scopePerson ? `${scopePerson.name} • ${scopePerson.cell}` : f.cell!=='all' ? `${f.cell} • ${people.length} workers` : f.q ? `Search: “${f.q}” • ${people.length} workers` : `Whole school • ${people.length} workers`;
+    const scope = scopePerson ? `${scopePerson.name} • ${scopePerson.cell}` : f.cell!=='all' ? `${f.cell} • ${people.length} workers` : f.q ? `Search: “${f.q}” • ${people.length} workers` : `Whole Theology • ${people.length} workers`;
     $('#scopeBanner').innerHTML=`<span>✦</span><strong>${esc(scope)}</strong><span>${f.from||'All dates'} → ${f.to||'Latest'}</span>`;
     const cards=[
       ['Overall',perf.overall,perf.totalRecords?`${perf.totalRecords} measured records`:'No recorded activity'],
@@ -359,7 +359,7 @@
       ['Service',perf.service.score,`${perf.service.total} records`],
       ['Cleaning',perf.cleaning.score,`${perf.cleaning.total} records`],
       ['Tithe & Offering',perf.finance.score,`${perf.finance.total} monthly records`],
-      ['Workers',people.length, f.cell==='all'?'School view':f.cell]
+      ['Workers',people.length, f.cell==='all'?'Theology view':f.cell]
     ];
     $('#kpiGrid').innerHTML=cards.map((c,i)=>{const metricTotal=i===0?perf.totalRecords:i===1?perf.education.total:i===2?perf.service.total:i===3?perf.cleaning.total:i===4?perf.finance.total:1;const shown=i===5?c[1]:(metricTotal?c[1]+'%':'—');return `<div class="kpi-card"><div class="kpi-label">${esc(c[0])}</div><div class="kpi-value">${shown}</div><div class="kpi-sub">${esc(c[2])}</div>${i<5?`<div class="progress-mini"><span style="width:${metricTotal?c[1]:0}%"></span></div>`:''}</div>`;}).join('');
     renderFollowUp(people,f.from,f.to);
@@ -455,7 +455,7 @@
 
   function exportBackup() {
     const blob=new Blob([JSON.stringify({version:2,exportedAt:new Date().toISOString(),data:db},null,2)],{type:'application/json'});
-    downloadBlob(blob,`heavenly-school-backup-${today()}.json`); toast('JSON backup exported.','success');
+    downloadBlob(blob,`MOT-Theology-backup-${today()}.json`); toast('JSON backup exported.','success');
   }
 
   function importBackup(e) {
@@ -495,7 +495,7 @@
     appendSheet(wb,'Tithe Offering',db.finance.filter(r=>recordFilter('finance',r)).map(financeExcelRow));
     const summary=peopleRows.map(pr=>{const perf=personPerformance(pr.ID,from,to);return{Worker:pr.Name,Cell:pr.Cell,'Education %':perf.education.total?perf.education.score:'','Service %':perf.service.total?perf.service.score:'','Cleaning %':perf.cleaning.total?perf.cleaning.score:'','Tithe & Offering %':perf.finance.total?perf.finance.score:'','Overall %':perf.hasData?perf.overall:'','Measured Records':perf.totalRecords};});
     appendSheet(wb,'Performance Summary',summary);
-    XLSX.writeFile(wb,`heavenly-school-${filteredReport?'filtered-report':'full-data'}-${today()}.xlsx`); toast('Excel workbook exported.','success');
+    XLSX.writeFile(wb,`MOT-Theology-${filteredReport?'filtered-report':'full-data'}-${today()}.xlsx`); toast('Excel workbook exported.','success');
   }
 
   function exportVisibleRecordsExcel() {
@@ -586,7 +586,7 @@
     const display=u.displayName||u.username;
     $('#currentUserName').textContent=display; $('#currentUserRole').textContent=roleLabel(role); $('#currentUserAvatar').textContent=initials(display)||'HS';
     $('#settingsUserName').textContent=display; $('#settingsUserAvatar').textContent=initials(display)||'HS';
-    $('#settingsUserScope').textContent = role==='admin'?'Whole school access':role==='cell_leader'?`${u.cell} access`:'Own performance only';
+    $('#settingsUserScope').textContent = role==='admin'?'Whole Theology access':role==='cell_leader'?`${u.cell} access`:'Own performance only';
     $('#settingsStatus').textContent='Connected to the shared Google Sheets database.';
     if(role==='admin') populateAccessSelectors();
   }
@@ -614,7 +614,7 @@
   }
 
   function renderAccessUsers() {
-    $('#accessUsersBody').innerHTML=accessUsers.length?accessUsers.map(u=>`<tr><td><strong>${esc(u.username)}</strong><br><small>${esc(u.displayName||'')}</small></td><td><span class="role-badge ${esc(u.role)}">${esc(roleLabel(u.role))}</span></td><td>${esc(u.role==='admin'?'Whole school':u.role==='cell_leader'?(u.cell||'No cell'):(u.personName||u.personId||'Unlinked'))}</td><td>${u.active!==false?'Active':'Disabled'}</td><td><button class="text-button" data-edit-user="${esc(u.id)}">Edit</button></td></tr>`).join(''):emptyRow(5,'No login accounts found.');
+    $('#accessUsersBody').innerHTML=accessUsers.length?accessUsers.map(u=>`<tr><td><strong>${esc(u.username)}</strong><br><small>${esc(u.displayName||'')}</small></td><td><span class="role-badge ${esc(u.role)}">${esc(roleLabel(u.role))}</span></td><td>${esc(u.role==='admin'?'Whole Theology':u.role==='cell_leader'?(u.cell||'No cell'):(u.personName||u.personId||'Unlinked'))}</td><td>${u.active!==false?'Active':'Disabled'}</td><td><button class="text-button" data-edit-user="${esc(u.id)}">Edit</button></td></tr>`).join(''):emptyRow(5,'No login accounts found.');
   }
 
   function clearAccessForm() {
@@ -654,9 +654,9 @@
     if(newSession){session=newSession;saveSession();}
     document.body.classList.add('auth-locked'); $('#authScreen').classList.remove('hidden');
     db=emptyDB(); initApp();
-    $('#authHelp').textContent='Loading your permitted school data…';
+    $('#authHelp').textContent='Loading your permitted Theology data…';
     const ok=await syncFromRemote(false);
-    if(!ok){ $('#authHelp').textContent='Could not load your school data. Check the Apps Script deployment and try signing in again.'; $('#authHelp').classList.add('error'); return; }
+    if(!ok){ $('#authHelp').textContent='Could not load your Theology data. Check the Apps Script deployment and try signing in again.'; $('#authHelp').classList.add('error'); return; }
     applyRoleUI(); document.body.classList.remove('auth-locked'); $('#authScreen').classList.add('hidden');
     if(session?.user?.role==='admin') loadAccessUsers();
   }
@@ -664,7 +664,7 @@
   async function bootAuth() {
     $('#authForm').addEventListener('submit', handleAuthSubmit);
     $('#authForm').dataset.mode='login';
-    $('#authHelp').textContent='Connecting to the shared school database…';
+    $('#authHelp').textContent='Connecting to the shared Theology database…';
     try{
       await apiFetch({action:'status'},false);
       if(session?.token){

@@ -1,5 +1,5 @@
 /**
- * Heavenly School Performance Dashboard — secure Google Sheets backend
+ * MOT Theology Performance Dashboard — secure Google Sheets backend
  *
  * Setup:
  * 1) Open the Google Sheet > Extensions > Apps Script.
@@ -35,7 +35,7 @@ const DEFAULT_STRUCTURE = [
 
 function doGet() {
   ensureSheets_();
-  return json_({ ok:true, service:'Heavenly School Performance Dashboard API', version:4 });
+  return json_({ ok:true, service:'MOT Theology Performance Dashboard API', version:4 });
 }
 
 function doPost(e) {

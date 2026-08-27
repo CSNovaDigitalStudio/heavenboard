@@ -4,23 +4,23 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#f8f5ff" />
-  <title>Heavenly School Performance Dashboard</title>
+  <title>MOT Theology Performance Dashboard</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body class="auth-locked">
   <section class="auth-screen" id="authScreen">
     <div class="auth-card">
-      <div class="auth-brand"><div class="brand-mark">✦</div><div><h1>Heavenly</h1><p>School Performance</p></div></div>
+      <div class="auth-brand"><div class="brand-mark">✦</div><div><h1>MOT</h1><p>Theology Performance</p></div></div>
       <span class="pill lavender" id="authModePill">SECURE ACCESS</span>
       <h2 id="authTitle">Sign in to dashboard</h2>
-      <p id="authDescription">Use the account created for you by the school administrator.</p>
+      <p id="authDescription">Use the account created for you by the Theology administrator.</p>
       <form id="authForm" class="auth-form">
         <label>Username<input id="loginUsername" type="text" autocomplete="username" required></label>
         <label>Password<input id="loginPassword" type="password" autocomplete="current-password" required></label>
         <button class="primary-button auth-submit" id="loginButton" type="submit">Sign in</button>
       </form>
-      <p class="auth-help" id="authHelp">Checking the shared school database…</p>
+      <p class="auth-help" id="authHelp">Checking the shared Theology database…</p>
     </div>
   </section>
   <div class="background-layer" aria-hidden="true"></div>
@@ -30,7 +30,7 @@
     <aside class="sidebar" id="sidebar">
       <div class="brand">
         <div class="brand-mark">✦</div>
-        <div><h1>Heavenly</h1><p>School Performance</p></div>
+        <div><h1>MOT</h1><p>Theology Performance</p></div>
       </div>
 
       <nav class="nav-list" aria-label="Main navigation">
@@ -74,9 +74,9 @@
         <section class="view active" id="view-dashboard">
           <div class="hero-card">
             <div class="hero-copy">
-              <span class="pill">School • Cell • Individual</span>
+              <span class="pill">Theology • Cell • Individual</span>
               <h3>See participation clearly.</h3>
-              <p>Track the full school structure, compare cells, and open the performance of any individual worker.</p>
+              <p>Track the full Theology structure, compare cells, and open the performance of any individual worker.</p>
               <div class="hero-actions">
                 <button class="primary-button" data-jump="education">+ Update participation</button>
                 <button class="secondary-button" data-jump="reports">Open reports</button>
@@ -92,7 +92,7 @@
           <div class="filters-card">
             <div class="filter-group"><label for="filterFrom">From</label><input type="date" id="filterFrom" /></div>
             <div class="filter-group"><label for="filterTo">To</label><input type="date" id="filterTo" /></div>
-            <div class="filter-group"><label for="filterCell">Cell</label><select id="filterCell"><option value="all">Whole school</option></select></div>
+            <div class="filter-group"><label for="filterCell">Cell</label><select id="filterCell"><option value="all">Whole Theology</option></select></div>
             <div class="filter-group grow"><label for="filterWorker">Worker</label><select id="filterWorker"><option value="all">All workers</option></select></div>
             <button class="soft-button" id="clearFiltersButton">Clear</button>
           </div>
@@ -222,7 +222,7 @@
 
         <section class="view" id="view-people">
           <div class="page-intro split">
-            <div><span class="pill gold">Actual school structure</span><h3>Workers & Cells</h3><p>30 workers arranged in 7 cells. You can edit names, cell assignment and active status.</p></div>
+            <div><span class="pill gold">Actual Theology structure</span><h3>Workers & Cells</h3><p>30 workers arranged in 7 cells. You can edit names, cell assignment and active status.</p></div>
             <div class="button-row"><button class="soft-button" id="restoreStructure">Restore supplied structure</button><button class="primary-button" id="savePeople">Save roster</button></div>
           </div>
           <div class="cell-summary-grid" id="cellSummaryGrid"></div>
@@ -234,7 +234,7 @@
 
         <section class="view" id="view-reports">
           <div class="page-intro split">
-            <div><span class="pill blue">Flexible analysis</span><h3>Performance Reports</h3><p>Switch between school, cell and individual summaries, then export the filtered result.</p></div>
+            <div><span class="pill blue">Flexible analysis</span><h3>Performance Reports</h3><p>Switch between Theology, cell and individual summaries, then export the filtered result.</p></div>
             <div class="button-row wrap"><button class="secondary-button" id="exportReportCsv">Export CSV</button><button class="primary-button" id="exportExcelButton">Export Excel</button></div>
           </div>
           <div class="filters-card">
