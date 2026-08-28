@@ -38,6 +38,7 @@
         <button class="nav-item" data-view="education"><span>✎</span> Weekly Education</button>
         <button class="nav-item" data-view="service"><span>♢</span> Service Attendance</button>
         <button class="nav-item" data-view="cleaning"><span>✧</span> Cleaning Meeting</button>
+        <button class="nav-item" data-view="exam"><span>✓</span> Exams</button>
         <button class="nav-item" data-view="finance"><span>◈</span> Tithe & Offering</button>
         <button class="nav-item" data-view="people"><span>♙</span> Workers & Cells</button>
         <button class="nav-item" data-view="reports"><span>▤</span> Reports</button>
@@ -84,7 +85,7 @@
             </div>
             <div class="hero-verse">
               <span class="sparkle">✦</span>
-              <strong id="heroWorkerCount">30 workers</strong>
+              <strong id="heroWorkerCount">31 workers</strong>
               <small>Across 7 cells</small>
             </div>
           </div>
@@ -139,7 +140,7 @@
                 <button class="text-button" data-jump="reports">View full report →</button>
               </div>
               <div class="table-scroll compact-table">
-                <table><thead><tr><th>Worker</th><th>Cell</th><th>Education</th><th>Service</th><th>Cleaning</th><th>Tithe & Offering</th><th>Overall</th></tr></thead><tbody id="followUpBody"></tbody></table>
+                <table><thead><tr><th>Worker</th><th>Cell</th><th>Duty</th><th>Education</th><th>Service</th><th>Cleaning</th><th>Exams</th><th>Tithe & Offering</th><th>Overall</th></tr></thead><tbody id="followUpBody"></tbody></table>
               </div>
             </article>
           </div>
@@ -155,7 +156,7 @@
               <div class="filter-group"><label>Date</label><input type="date" id="educationDate"></div>
               <div class="filter-group"><label>Session</label><select id="educationSession"><option value="Wednesday 20:30">Wednesday 20:30</option><option value="Saturday 09:30">Saturday 09:30</option><option value="Sunday 14:30">Sunday 14:30</option></select></div>
               <div class="filter-group"><label>Cell</label><select id="educationCell"><option value="all">All cells</option></select></div>
-              <div class="filter-group grow"><label>Find worker</label><input type="search" id="educationSearch" placeholder="Name or cell..."></div>
+              <div class="filter-group grow"><label>Find worker</label><input type="search" id="educationSearch" placeholder="Name, duty or cell..."></div>
               <button class="soft-button" id="educationMarkAll">Mark all present</button>
               <button class="primary-button" id="saveEducation">Save education</button>
             </div>
@@ -174,7 +175,7 @@
               <div class="filter-group"><label>Date</label><input type="date" id="serviceDate"></div>
               <div class="filter-group"><label>Service</label><select id="serviceSession"><option value="Wednesday Service">Wednesday Service</option><option value="Sunday Service">Sunday Service</option></select></div>
               <div class="filter-group"><label>Cell</label><select id="serviceCell"><option value="all">All cells</option></select></div>
-              <div class="filter-group grow"><label>Find worker</label><input type="search" id="serviceSearch" placeholder="Name or cell..."></div>
+              <div class="filter-group grow"><label>Find worker</label><input type="search" id="serviceSearch" placeholder="Name, duty or cell..."></div>
               <button class="soft-button" id="serviceMarkAll">Mark all present</button>
               <button class="primary-button" id="saveService">Save service</button>
             </div>
@@ -193,7 +194,7 @@
               <div class="filter-group"><label>Date</label><input type="date" id="cleaningDate"></div>
               <div class="filter-group"><label>Session</label><select id="cleaningSession"><option value="Sunday 09:00">Sunday 09:00</option></select></div>
               <div class="filter-group"><label>Cell</label><select id="cleaningCell"><option value="all">All cells</option></select></div>
-              <div class="filter-group grow"><label>Find worker</label><input type="search" id="cleaningSearch" placeholder="Name or cell..."></div>
+              <div class="filter-group grow"><label>Find worker</label><input type="search" id="cleaningSearch" placeholder="Name, duty or cell..."></div>
               <button class="soft-button" id="cleaningMarkAll">Mark all present</button>
               <button class="primary-button" id="saveCleaning">Save cleaning</button>
             </div>
@@ -202,33 +203,53 @@
           </div>
         </section>
 
+        <section class="view" id="view-exam">
+          <div class="page-intro split">
+            <div><span class="pill gold">Usually every 2 weeks</span><h3>Exams</h3><p>Record each exam result by date and exam name. Written exams use the percentage score; absent counts as 0%; excused is excluded.</p></div>
+            <div class="schedule-stack"><span>Approximately fortnightly</span></div>
+          </div>
+          <div class="entry-panel">
+            <div class="entry-toolbar">
+              <div class="filter-group"><label>Date</label><input type="date" id="examDate"></div>
+              <div class="filter-group"><label>Exam name</label><input type="text" id="examName" placeholder="e.g. Exam 01"></div>
+              <div class="filter-group"><label>Maximum mark</label><input type="number" id="examMaxMark" min="1" step="1" value="100"></div>
+              <div class="filter-group"><label>Cell</label><select id="examCell"><option value="all">All cells</option></select></div>
+              <div class="filter-group grow"><label>Find worker</label><input type="search" id="examSearch" placeholder="Name, duty or cell..."></div>
+              <button class="soft-button" id="examMarkAll">Mark all written</button>
+              <button class="primary-button" id="saveExam">Save exam</button>
+            </div>
+            <div class="entry-summary" id="examSummary"></div>
+            <div class="table-scroll"><table class="entry-table"><thead><tr><th>#</th><th>Worker</th><th>Cell</th><th>Status</th><th>Mark</th><th>Percentage</th><th>Notes</th></tr></thead><tbody id="examBody"></tbody></table></div>
+          </div>
+        </section>
+
         <section class="view" id="view-finance">
           <div class="page-intro split">
-            <div><span class="pill mint">Once each month</span><h3>Tithe & Offering</h3><p>Record the monthly Tithe & Offering participation together. Amount is optional.</p></div>
+            <div><span class="pill mint">Once each month</span><h3>Tithe & Offering</h3><p>Record the monthly Tithe & Offering participation together.</p></div>
             <div class="schedule-stack"><span>Monthly</span></div>
           </div>
           <div class="entry-panel">
             <div class="entry-toolbar">
               <div class="filter-group"><label>Month</label><input type="month" id="financeMonth"></div>
               <div class="filter-group"><label>Cell</label><select id="financeCell"><option value="all">All cells</option></select></div>
-              <div class="filter-group grow"><label>Find worker</label><input type="search" id="financeSearch" placeholder="Name or cell..."></div>
+              <div class="filter-group grow"><label>Find worker</label><input type="search" id="financeSearch" placeholder="Name, duty or cell..."></div>
               <button class="soft-button" id="financeMarkAll">Mark all submitted</button>
               <button class="primary-button" id="saveFinance">Save monthly record</button>
             </div>
             <div class="entry-summary" id="financeSummary"></div>
-            <div class="table-scroll"><table class="entry-table"><thead><tr><th>#</th><th>Worker</th><th>Cell</th><th>Status</th><th>Amount (R)</th><th>Notes</th></tr></thead><tbody id="financeBody"></tbody></table></div>
+            <div class="table-scroll"><table class="entry-table"><thead><tr><th>#</th><th>Worker</th><th>Cell</th><th>Status</th><th>Notes</th></tr></thead><tbody id="financeBody"></tbody></table></div>
           </div>
         </section>
 
         <section class="view" id="view-people">
           <div class="page-intro split">
-            <div><span class="pill gold">Actual Theology structure</span><h3>Workers & Cells</h3><p>30 workers arranged in 7 cells. You can edit names, cell assignment and active status.</p></div>
+            <div><span class="pill gold">Actual Theology structure</span><h3>Workers & Cells</h3><p>31 workers arranged in 7 cells. You can edit names, cell assignment, duty and active status.</p></div>
             <div class="button-row"><button class="soft-button" id="restoreStructure">Restore supplied structure</button><button class="primary-button" id="savePeople">Save roster</button></div>
           </div>
           <div class="cell-summary-grid" id="cellSummaryGrid"></div>
           <div class="entry-panel">
-            <div class="entry-toolbar"><div class="filter-group grow"><label>Find worker</label><input type="search" id="peopleSearch" placeholder="Search worker or cell..."></div></div>
-            <div class="table-scroll"><table class="entry-table"><thead><tr><th>#</th><th>Worker</th><th>Cell</th><th>Status</th><th>Performance</th></tr></thead><tbody id="peopleBody"></tbody></table></div>
+            <div class="entry-toolbar"><div class="filter-group grow"><label>Find worker</label><input type="search" id="peopleSearch" placeholder="Search worker, duty or cell..."></div></div>
+            <div class="table-scroll"><table class="entry-table"><thead><tr><th>#</th><th>Worker</th><th>Cell</th><th>Duty</th><th>Status</th><th>Performance</th></tr></thead><tbody id="peopleBody"></tbody></table></div>
           </div>
         </section>
 
@@ -256,11 +277,11 @@
           </div>
           <div class="entry-panel">
             <div class="entry-toolbar">
-              <div class="filter-group"><label>Metric</label><select id="recordsMetric"><option value="all">All metrics</option><option value="education">Education</option><option value="service">Service</option><option value="cleaning">Cleaning</option><option value="finance">Tithe & Offering</option></select></div>
+              <div class="filter-group"><label>Metric</label><select id="recordsMetric"><option value="all">All metrics</option><option value="education">Education</option><option value="service">Service</option><option value="cleaning">Cleaning</option><option value="exam">Exams</option><option value="finance">Tithe & Offering</option></select></div>
               <div class="filter-group"><label>From</label><input type="date" id="recordsFrom"></div>
               <div class="filter-group"><label>To</label><input type="date" id="recordsTo"></div>
               <div class="filter-group"><label>Cell</label><select id="recordsCell"><option value="all">All cells</option></select></div>
-              <div class="filter-group grow"><label>Search</label><input type="search" id="recordsSearch" placeholder="Name, cell, status..."></div>
+              <div class="filter-group grow"><label>Search</label><input type="search" id="recordsSearch" placeholder="Name, duty, cell, status..."></div>
             </div>
             <div class="entry-summary"><span id="recordsCount"></span></div>
             <div class="table-scroll"><table class="entry-table"><thead><tr><th>Date</th><th>Worker</th><th>Cell</th><th>Metric</th><th>Session / Detail</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody id="recordsBody"></tbody></table></div>
@@ -308,6 +329,7 @@
                 <div><strong>Weekly Education</strong><span>Wednesday 20:30 • Saturday 09:30 • Sunday 14:30</span></div>
                 <div><strong>Service Attendance</strong><span>Wednesday • Sunday</span></div>
                 <div><strong>Cleaning Meeting</strong><span>Sunday 09:00</span></div>
+                <div><strong>Exams</strong><span>Usually every 2 weeks</span></div>
                 <div><strong>Tithe & Offering</strong><span>Once every month</span></div>
               </div>
             </article>

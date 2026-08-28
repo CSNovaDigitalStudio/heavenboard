@@ -4,21 +4,45 @@
   const STORAGE_KEY = 'heavenlySchoolPerformanceDB_v3';
   const AUTH_STORAGE_KEY = 'heavenlySchoolAuth_v3';
   const API_URL = 'https://script.google.com/macros/s/AKfycby5p_eTx-p2P_c8Ah44bYvYeWn07palDn1Nj7Cf2jUKbK_tCDeQ8x0CDTBwIlyfTLtS8w/exec';
-  const METRICS = ['education', 'service', 'cleaning', 'finance'];
+  const METRICS = ['education', 'service', 'cleaning', 'exam', 'finance'];
   const TITLES = {
     dashboard: ['OVERVIEW', 'Dashboard'], education: ['WEEKLY INPUT', 'Weekly Education'], service: ['ATTENDANCE', 'Service Attendance'],
-    cleaning: ['WEEKLY INPUT', 'Cleaning Meeting'], finance: ['MONTHLY INPUT', 'Tithe & Offering'], people: ['STRUCTURE', 'Workers & Cells'],
+    cleaning: ['WEEKLY INPUT', 'Cleaning Meeting'], exam: ['ASSESSMENT', 'Exams'], finance: ['MONTHLY INPUT', 'Tithe & Offering'], people: ['STRUCTURE', 'Workers & Cells'],
     reports: ['ANALYSIS', 'Reports'], records: ['HISTORY', 'All Records'], settings: ['SYSTEM', 'Settings']
   };
 
-  const DEFAULT_STRUCTURE = [
-    ['Cell 1', ['Ngombongangani Ngubane', 'Patrick Zuma', 'Mbali Ngema', 'Mfundo Mchunu']],
-    ['Cell 2', ['Ernest Mbedzi', 'Ntobeko Mzobe', 'Nonkululeko Madlala']],
-    ['Cell 3', ['Nkanyiso Qwabe', 'Enhle Ngcobo', 'Khwezi Khanyeza', 'Bongiwe Dlamini', 'Sharon Ngcobo']],
-    ['Cell 04', ['Simamkele Mfingwana', 'Alungile Gqola', 'Phumelele Lembethe', 'Brian Zuma', 'Zintle Dwabayo']],
-    ['Cell 05', ['Sicelo Malinga', 'Thuthukile Buthelezi', 'Sinegugu Ngxongxela', 'Sinethemba Ngcobo']],
-    ['Cell 06', ['Mholi Makhanya', 'Arinao Nelwamondo', 'Kyle Hendricks', 'Lindiwe Jack']],
-    ['Cell 7', ['Lindiwe Msimanga', 'Lungile Ngobese', 'Thandokuhle Makhathini', 'Nompumelelo Mkhize', 'Mbali Dlamini']]
+  const DEFAULT_PEOPLE = [
+    {id:'C01-05',name:'Rafeeq Baatjies',cell:'Cell 01',duty:'GSN'},
+    {id:'C01-01',name:'Ngo JDSN',cell:'Cell 01',duty:'HJDSN'},
+    {id:'C01-04',name:'Mfundo JDSN',cell:'Cell 01',duty:'JDSN'},
+    {id:'C01-02',name:'Patrick JDSN',cell:'Cell 01',duty:'JDSN'},
+    {id:'C01-03',name:'Mbali N JDSN',cell:'Cell 01',duty:'JDSN'},
+    {id:'C02-01',name:'Ernest Mbedzi',cell:'Cell 02',duty:'GSN'},
+    {id:'C02-03',name:'Nonku JDSN',cell:'Cell 02',duty:'JDSN'},
+    {id:'C02-02',name:'Ntobeko KSN',cell:'Cell 02',duty:'KSN'},
+    {id:'C03-01',name:'Nkanyiso Qwabe JDSN',cell:'Cell 03',duty:'GSN'},
+    {id:'C03-04',name:'Bongiwe JDSN',cell:'Cell 03',duty:'HJDSN'},
+    {id:'C03-05',name:'Sharon JDSN',cell:'Cell 03',duty:'JDSN'},
+    {id:'C03-02',name:'Enhle JDSN',cell:'Cell 03',duty:'HJDSN'},
+    {id:'C03-03',name:'Khwezi JDSN',cell:'Cell 03',duty:'JDSN'},
+    {id:'C04-01',name:'Simamkele JDSN',cell:'Cell 04',duty:'JDSN'},
+    {id:'C04-03',name:'Phume GSN',cell:'Cell 04',duty:'GSN'},
+    {id:'C04-02',name:'Alungile JDSN',cell:'Cell 04',duty:'HJDSN'},
+    {id:'C04-05',name:'Zinhle JDSN',cell:'Cell 04',duty:'KSN'},
+    {id:'C04-06',name:'Anda JDSN',cell:'Cell 04',duty:'JDSN'},
+    {id:'C05-01',name:'Sicelo Malinga',cell:'Cell 05',duty:'GSN'},
+    {id:'C05-02',name:'Thuthu JDSN',cell:'Cell 05',duty:'HJDSN'},
+    {id:'C05-04',name:'Sne Ngcobo JDSN',cell:'Cell 05',duty:'JDSN'},
+    {id:'C05-03',name:'Sinegugu JDSN',cell:'Cell 05',duty:'JDSN'},
+    {id:'C06-01',name:'Mholi Makhanya JDSN',cell:'Cell 06',duty:'GSN'},
+    {id:'C06-02',name:'Arinao JDSN',cell:'Cell 06',duty:'HJDSN'},
+    {id:'C06-03',name:'Kyle KSN',cell:'Cell 06',duty:'KSN'},
+    {id:'C06-04',name:'Lindi J JDSN',cell:'Cell 06',duty:'JDSN'},
+    {id:'C07-03',name:'Thandokuhle M JDSN',cell:'Cell 07',duty:'GSN'},
+    {id:'C07-01',name:'Lindi M JDSN',cell:'Cell 07',duty:'HJDSN'},
+    {id:'C07-02',name:'Lungile JDSN',cell:'Cell 07',duty:'JDSN'},
+    {id:'C07-05',name:'Mbali D JDSN',cell:'Cell 07',duty:'JDSN'},
+    {id:'C07-04',name:'Mpumi JDSN',cell:'Cell 07',duty:'JDSN'}
   ];
 
   const $ = s => document.querySelector(s);
@@ -42,15 +66,10 @@
 
   function createPeople() {
     const now = new Date().toISOString();
-    const rows = [];
-    DEFAULT_STRUCTURE.forEach(([cell, names], cellIndex) => names.forEach((name, personIndex) => rows.push({
-      id: `C${String(cellIndex + 1).padStart(2,'0')}-${String(personIndex + 1).padStart(2,'0')}`,
-      name, cell, active: true, createdAt: now, updatedAt: now
-    })));
-    return rows;
+    return DEFAULT_PEOPLE.map(p => ({...p, active:true, createdAt:now, updatedAt:now}));
   }
 
-  function emptyDB() { return { people: createPeople(), education: [], service: [], cleaning: [], finance: [] }; }
+  function emptyDB() { return { people: createPeople(), education: [], service: [], cleaning: [], exam: [], finance: [] }; }
 
   function loadLocal() {
     try {
@@ -72,12 +91,12 @@
 
   function saveLocal() { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); }
   function activePeople() { return db.people.filter(p => p.active !== false); }
-  function personById(id) { return db.people.find(p => p.id === id) || { id, name: id, cell: '' }; }
+  function personById(id) { return db.people.find(p => p.id === id) || { id, name: id, cell: '', duty: '' }; }
   function cellNames() { return [...new Set(activePeople().map(p => p.cell).filter(Boolean))].sort(cellSort); }
   function cellSort(a,b) { return Number((a.match(/\d+/)||[999])[0]) - Number((b.match(/\d+/)||[999])[0]) || a.localeCompare(b); }
   function dateWithin(date, from, to) { if (!date) return false; const d = String(date).slice(0,10); return (!from || d >= from) && (!to || d <= to); }
   function recordDate(metric, r) { return metric === 'finance' ? `${r.month || ''}-01` : (r.date || ''); }
-  function metricLabel(metric) { return ({education:'Education',service:'Service',cleaning:'Cleaning',finance:'Tithe & Offering'})[metric] || cap(metric); }
+  function metricLabel(metric) { return ({education:'Education',service:'Service',cleaning:'Cleaning',exam:'Exams',finance:'Tithe & Offering'})[metric] || cap(metric); }
   function positive(metric, status) { return metric === 'finance' ? status === 'Submitted' : status === 'Present'; }
   function validStatus(status) { return !!status && status !== 'Excused' && status !== 'Not recorded'; }
   function initials(name) { return String(name || '').split(/\s+/).filter(Boolean).slice(0,2).map(x => x[0]).join('').toUpperCase(); }
@@ -102,7 +121,7 @@
   }
 
   function setDefaultDates() {
-    ['educationDate','serviceDate','cleaningDate'].forEach(id => $(`#${id}`).value = today());
+    ['educationDate','serviceDate','cleaningDate','examDate'].forEach(id => $(`#${id}`).value = today());
     $('#financeMonth').value = monthNow();
     const d = new Date(); d.setDate(d.getDate() - 28);
     ['filterFrom','reportFrom'].forEach(id => $(`#${id}`).value = localISO(d));
@@ -136,12 +155,12 @@
     $('#filterCell').addEventListener('change', () => { fillWorkerSelect('#filterWorker', $('#filterCell').value); $('#filterWorker').value='all'; renderDashboard(); });
     $('#clearFiltersButton').addEventListener('click', () => { $('#filterFrom').value=''; $('#filterTo').value=''; $('#filterCell').value='all'; fillWorkerSelect('#filterWorker','all'); $('#filterWorker').value='all'; $('#globalSearch').value=''; renderDashboard(); });
 
-    ['education','service','cleaning','finance'].forEach(metric => {
+    ['education','service','cleaning','exam','finance'].forEach(metric => {
       $(`#${metric}Search`).addEventListener('input', () => renderEntry(metric));
       $(`#${metric}Cell`).addEventListener('change', () => renderEntry(metric));
     });
-    ['educationDate','educationSession','serviceDate','serviceSession','cleaningDate','cleaningSession','financeMonth'].forEach(id => {
-      const metric = id.startsWith('education') ? 'education' : id.startsWith('service') ? 'service' : id.startsWith('cleaning') ? 'cleaning' : 'finance';
+    ['educationDate','educationSession','serviceDate','serviceSession','cleaningDate','cleaningSession','examDate','examName','examMaxMark','financeMonth'].forEach(id => {
+      const metric = id.startsWith('education') ? 'education' : id.startsWith('service') ? 'service' : id.startsWith('cleaning') ? 'cleaning' : id.startsWith('exam') ? 'exam' : 'finance';
       $(`#${id}`).addEventListener('change', () => renderEntry(metric));
     });
     $('#peopleSearch').addEventListener('input', renderPeople);
@@ -156,10 +175,12 @@
     $('#educationMarkAll').addEventListener('click', () => markAll('#educationBody', 'Present'));
     $('#serviceMarkAll').addEventListener('click', () => markAll('#serviceBody', 'Present'));
     $('#cleaningMarkAll').addEventListener('click', () => markAll('#cleaningBody', 'Present'));
+    $('#examMarkAll').addEventListener('click', () => markAll('#examBody', 'Written'));
     $('#financeMarkAll').addEventListener('click', () => markAll('#financeBody', 'Submitted'));
     $('#saveEducation').addEventListener('click', () => saveAttendanceBatch('education'));
     $('#saveService').addEventListener('click', () => saveAttendanceBatch('service'));
     $('#saveCleaning').addEventListener('click', () => saveAttendanceBatch('cleaning'));
+    $('#saveExam').addEventListener('click', saveExamBatch);
     $('#saveFinance').addEventListener('click', saveFinanceBatch);
     $('#savePeople').addEventListener('click', savePeopleRoster);
     $('#restoreStructure').addEventListener('click', restoreStructure);
@@ -200,7 +221,7 @@
 
   function renderSelects() {
     const cells = cellNames();
-    const targets = ['#filterCell','#educationCell','#serviceCell','#cleaningCell','#financeCell','#reportCell','#recordsCell'];
+    const targets = ['#filterCell','#educationCell','#serviceCell','#cleaningCell','#examCell','#financeCell','#reportCell','#recordsCell'];
     targets.forEach(sel => {
       const el=$(sel); const current=el.value;
       el.innerHTML = `<option value="all">${sel==='#filterCell'?'Whole Theology':'All cells'}</option>` + cells.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
@@ -213,22 +234,23 @@
   function fillWorkerSelect(selector, cell='all') {
     const el=$(selector); const current=el.value;
     const people=activePeople().filter(p=>cell==='all'||p.cell===cell).sort((a,b)=>a.name.localeCompare(b.name));
-    el.innerHTML='<option value="all">All workers</option>'+people.map(p=>`<option value="${esc(p.id)}">${esc(p.name)} — ${esc(p.cell)}</option>`).join('');
+    el.innerHTML='<option value="all">All workers</option>'+people.map(p=>`<option value="${esc(p.id)}">${esc(p.name)} — ${esc(p.cell)} • ${esc(p.duty||'')}</option>`).join('');
     if ([...el.options].some(o=>o.value===current)) el.value=current;
   }
 
   function filteredRoster(cell, search='') {
     const q=String(search||'').trim().toLowerCase();
-    return activePeople().filter(p => (cell==='all'||p.cell===cell) && (!q || `${p.name} ${p.cell}`.toLowerCase().includes(q)));
+    return activePeople().filter(p => (cell==='all'||p.cell===cell) && (!q || `${p.name} ${p.cell} ${p.duty||''}`.toLowerCase().includes(q)));
   }
 
   function renderEntry(metric) {
     if (metric === 'finance') return renderFinanceEntry();
+    if (metric === 'exam') return renderExamEntry();
     renderAttendanceEntry(metric);
   }
 
   function statusOptions(value, metric='attendance') {
-    const opts = metric==='finance' ? ['', 'Submitted', 'Not submitted', 'Excused'] : ['', 'Present', 'Absent', 'Excused'];
+    const opts = metric==='finance' ? ['', 'Submitted', 'Not submitted', 'Excused'] : metric==='exam' ? ['', 'Written', 'Absent', 'Excused'] : ['', 'Present', 'Absent', 'Excused'];
     return opts.map(o=>`<option value="${esc(o)}" ${o===value?'selected':''}>${o || 'Not recorded'}</option>`).join('');
   }
 
@@ -245,13 +267,40 @@
     $(`#${metric}Summary`).innerHTML=`<span class="summary-chip"><span class="summary-dot good"></span>${saved} saved</span><span>${rows.length} workers shown</span><span>${esc(date||'Choose a date')} • ${esc(session||'')}</span>`;
   }
 
+  function renderExamEntry() {
+    const date=$('#examDate').value, examName=$('#examName').value.trim(), maxMark=Number($('#examMaxMark').value)||100, cell=$('#examCell').value, search=$('#examSearch').value;
+    const rows=filteredRoster(cell,search), body=$('#examBody');
+    body.innerHTML = rows.map((p,i)=>{
+      const r=db.exam.find(x=>x.personId===p.id&&x.date===date&&String(x.examName||'')===examName)||{};
+      const shownPct=r.status==='Written'&&r.score!==''&&r.score!=null ? Math.round((Number(r.score)/Number(r.maxMark||maxMark))*100) : r.status==='Absent' ? 0 : '';
+      return `<tr data-person-id="${esc(p.id)}"><td>${i+1}</td><td><div class="worker-cell"><div class="avatar">${initials(p.name)}</div><div><strong>${esc(p.name)}</strong><small>${esc(p.id)}</small></div></div></td><td>${esc(p.cell)}</td><td><select class="status-select ${statusClass(r.status)}">${statusOptions(r.status,'exam')}</select></td><td><input class="amount-input exam-score" type="number" min="0" max="${esc(maxMark)}" step="0.01" value="${esc(r.score??'')}" placeholder="Mark"></td><td><span class="exam-percent ${shownPct!==''?'performance-chip '+scoreClass(shownPct):''}">${shownPct===''?'—':shownPct+'%'}</span></td><td><input class="note-input" type="text" value="${esc(r.note||'')}" placeholder="Optional note"></td></tr>`;
+    }).join('') || emptyRow(7);
+    bindStatusColors(body);
+    body.querySelectorAll('tr[data-person-id]').forEach(tr=>{
+      const refresh=()=>updateExamPercentRow(tr,maxMark);
+      tr.querySelector('.status-select')?.addEventListener('change',refresh);
+      tr.querySelector('.exam-score')?.addEventListener('input',refresh);
+    });
+    const ids=new Set(rows.map(p=>p.id)); const saved=db.exam.filter(r=>ids.has(r.personId)&&r.date===date&&String(r.examName||'')===examName&&r.status).length;
+    $('#examSummary').innerHTML=`<span class="summary-chip"><span class="summary-dot good"></span>${saved} saved</span><span>${rows.length} workers shown</span><span>${esc(date||'Choose a date')} • ${esc(examName||'Name this exam')} • out of ${esc(maxMark)}</span>`;
+  }
+
+  function updateExamPercentRow(tr,maxMark) {
+    const status=tr.querySelector('.status-select')?.value||'', score=Number(tr.querySelector('.exam-score')?.value);
+    const el=tr.querySelector('.exam-percent'); if(!el) return;
+    let value='';
+    if(status==='Written' && Number.isFinite(score) && maxMark>0) value=Math.max(0,Math.min(100,Math.round((score/maxMark)*100)));
+    else if(status==='Absent') value=0;
+    el.textContent=value===''?'—':value+'%'; el.className='exam-percent'+(value===''?'':' performance-chip '+scoreClass(value));
+  }
+
   function renderFinanceEntry() {
     const month=$('#financeMonth').value, cell=$('#financeCell').value, search=$('#financeSearch').value;
     const rows=filteredRoster(cell,search), body=$('#financeBody');
     body.innerHTML = rows.map((p,i)=>{
       const r=db.finance.find(x=>x.personId===p.id&&x.month===month)||{};
-      return `<tr data-person-id="${esc(p.id)}"><td>${i+1}</td><td><div class="worker-cell"><div class="avatar">${initials(p.name)}</div><div><strong>${esc(p.name)}</strong><small>${esc(p.id)}</small></div></div></td><td>${esc(p.cell)}</td><td><select class="status-select ${statusClass(r.status)}">${statusOptions(r.status,'finance')}</select></td><td><input class="amount-input" type="number" min="0" step="0.01" value="${esc(r.amount??'')}" placeholder="Optional"></td><td><input class="note-input" type="text" value="${esc(r.note||'')}" placeholder="Optional note"></td></tr>`;
-    }).join('') || emptyRow(6);
+      return `<tr data-person-id="${esc(p.id)}"><td>${i+1}</td><td><div class="worker-cell"><div class="avatar">${initials(p.name)}</div><div><strong>${esc(p.name)}</strong><small>${esc(p.id)}</small></div></div></td><td>${esc(p.cell)}</td><td><select class="status-select ${statusClass(r.status)}">${statusOptions(r.status,'finance')}</select></td><td><input class="note-input" type="text" value="${esc(r.note||'')}" placeholder="Optional note"></td></tr>`;
+    }).join('') || emptyRow(5);
     bindStatusColors(body);
     const ids=new Set(rows.map(p=>p.id)); const saved=db.finance.filter(r=>ids.has(r.personId)&&r.month===month&&r.status).length;
     $('#financeSummary').innerHTML=`<span class="summary-chip"><span class="summary-dot good"></span>${saved} saved</span><span>${rows.length} workers shown</span><span>${esc(monthLabel(month)||'Choose a month')}</span>`;
@@ -275,13 +324,38 @@
     upsertMany(metric,records,r=>`${r.personId}|${r.date}|${r.session}`); saveLocal(); await syncSaved(metric,records); renderEntry(metric); renderDashboard(); renderReports(); renderRecords(); toast(`${metricLabel(metric)} saved for ${records.length} workers.`,'success');
   }
 
+  async function saveExamBatch() {
+    const date=$('#examDate').value, examName=$('#examName').value.trim(), maxMark=Number($('#examMaxMark').value);
+    if(!date) return toast('Please choose the exam date.','error');
+    if(!examName) return toast('Please enter the exam name.','error');
+    if(!Number.isFinite(maxMark)||maxMark<=0) return toast('Maximum mark must be greater than 0.','error');
+    const records=[]; let problem='';
+    $$('#examBody tr[data-person-id]').forEach(tr=>{
+      if(problem) return;
+      const personId=tr.dataset.personId, status=tr.querySelector('.status-select').value, rawScore=tr.querySelector('.exam-score').value, note=tr.querySelector('.note-input').value.trim();
+      const old=db.exam.find(r=>r.personId===personId&&r.date===date&&String(r.examName||'')===examName);
+      if(!status && rawScore==='' && !note && !old) return;
+      let score=rawScore===''?'':Number(rawScore);
+      if(status==='Written' && score==='') { problem=`Enter a mark for ${personById(personId).name}, or change the exam status.`; return; }
+      if(score!=='' && (!Number.isFinite(score)||score<0||score>maxMark)) { problem=`${personById(personId).name}'s mark must be between 0 and ${maxMark}.`; return; }
+      if(status==='Absent') score=0;
+      if(status==='Excused' || !status) score='';
+      const percentage=status==='Written' ? Math.round((score/maxMark)*10000)/100 : status==='Absent' ? 0 : '';
+      records.push({id:old?.id||uid('exm'),personId,date,examName,maxMark,status,score,percentage,note,updatedAt:new Date().toISOString()});
+    });
+    if(problem) return toast(problem,'error');
+    if(!records.length) return toast('No exam results were entered.','error');
+    upsertMany('exam',records,r=>`${r.personId}|${r.date}|${String(r.examName||'').toLowerCase()}`); saveLocal(); await syncSaved('exam',records); renderEntry('exam'); renderDashboard(); renderReports(); renderRecords(); toast(`Exam results saved for ${records.length} workers.`,'success');
+  }
+
   async function saveFinanceBatch() {
     const month=$('#financeMonth').value; if(!month) return toast('Please choose a month.','error');
     const records=[];
     $$('#financeBody tr[data-person-id]').forEach(tr=>{
-      const personId=tr.dataset.personId, status=tr.querySelector('.status-select').value, amount=numOrBlank(tr.querySelector('.amount-input').value), note=tr.querySelector('.note-input').value.trim();
+      const personId=tr.dataset.personId, status=tr.querySelector('.status-select').value, note=tr.querySelector('.note-input').value.trim();
       const old=db.finance.find(r=>r.personId===personId&&r.month===month);
-      if(!status && amount==='' && !note && !old) return;
+      if(!status && !note && !old) return;
+      const amount=old?.amount??''; // kept only for backward compatibility with the existing Apps Script/Excel schema
       records.push({id:old?.id||uid('fin'),personId,month,status,amount,note,updatedAt:new Date().toISOString()});
     });
     if(!records.length) return toast('No monthly records were entered.','error');
@@ -294,16 +368,17 @@
 
   function renderPeople() {
     const q=($('#peopleSearch')?.value||'').toLowerCase();
-    const rows=db.people.filter(p=>!q||`${p.name} ${p.cell} ${p.id}`.toLowerCase().includes(q));
+    const rows=activePeople().filter(p=>!q||`${p.name} ${p.cell} ${p.duty||''} ${p.id}`.toLowerCase().includes(q));
     const defaultFrom=$('#filterFrom')?.value||'', defaultTo=$('#filterTo')?.value||today();
     $('#peopleBody').innerHTML=rows.map((p,i)=>{
       const perf=personPerformance(p.id,defaultFrom,defaultTo);
-      return `<tr data-person-id="${esc(p.id)}"><td>${i+1}</td><td><input class="person-name" type="text" value="${esc(p.name)}"></td><td><select class="person-cell">${cellOptions(p.cell)}</select></td><td><label class="check-label"><input class="person-active" type="checkbox" ${p.active!==false?'checked':''}> Active</label></td><td><span class="performance-chip ${scoreClass(perf.overall)}">${perf.hasData?perf.overall+'%':'—'}</span></td></tr>`;
-    }).join('')||emptyRow(5,'No workers match this search.');
+      return `<tr data-person-id="${esc(p.id)}"><td>${i+1}</td><td><input class="person-name" type="text" value="${esc(p.name)}"></td><td><select class="person-cell">${cellOptions(p.cell)}</select></td><td><select class="person-duty">${dutyOptions(p.duty)}</select></td><td><label class="check-label"><input class="person-active" type="checkbox" ${p.active!==false?'checked':''}> Active</label></td><td><span class="performance-chip ${scoreClass(perf.overall)}">${perf.hasData?perf.overall+'%':'—'}</span></td></tr>`;
+    }).join('')||emptyRow(6,'No workers match this search.');
     renderCellSummary();
   }
 
   function cellOptions(current) { const known=[...new Set([...cellNames(),current].filter(Boolean))].sort(cellSort); return known.map(c=>`<option value="${esc(c)}" ${c===current?'selected':''}>${esc(c)}</option>`).join(''); }
+  function dutyOptions(current) { return ['GSN','HJDSN','JDSN','KSN'].map(d=>`<option value="${d}" ${d===current?'selected':''}>${d}</option>`).join(''); }
 
   function renderCellSummary() {
     const from=$('#filterFrom')?.value||'', to=$('#filterTo')?.value||today();
@@ -315,7 +390,7 @@
 
   async function savePeopleRoster() {
     const updates=new Map();
-    $$('#peopleBody tr[data-person-id]').forEach(tr=>updates.set(tr.dataset.personId,{name:tr.querySelector('.person-name').value.trim()||tr.dataset.personId,cell:tr.querySelector('.person-cell').value,active:tr.querySelector('.person-active').checked}));
+    $$('#peopleBody tr[data-person-id]').forEach(tr=>updates.set(tr.dataset.personId,{name:tr.querySelector('.person-name').value.trim()||tr.dataset.personId,cell:tr.querySelector('.person-cell').value,duty:tr.querySelector('.person-duty').value,active:tr.querySelector('.person-active').checked}));
     db.people=db.people.map(p=>updates.has(p.id)?{...p,...updates.get(p.id),updatedAt:new Date().toISOString()}:p); saveLocal(); renderAll();
     try{await remoteCall({action:'savePeople',people:db.people});}catch(e){return toast('Roster saved locally; cloud sync failed: '+e.message,'error');}
     toast('Worker structure saved.','success');
@@ -335,7 +410,7 @@
   }
 
   function filteredRecords(metric, people, from, to) { const ids=new Set(people.map(p=>p.id)); return db[metric].filter(r=>ids.has(r.personId)&&dateWithin(recordDate(metric,r),from,to)); }
-  function metricPerformanceFromRecords(metric, records) { const valid=records.filter(r=>validStatus(r.status)); return {score:pct(valid.filter(r=>positive(metric,r.status)).length,valid.length),total:valid.length,positive:valid.filter(r=>positive(metric,r.status)).length}; }
+  function metricPerformanceFromRecords(metric, records) { if(metric==='exam'){const valid=records.filter(r=>r.status==='Written'||r.status==='Absent').map(r=>({ ...r, pct:r.status==='Absent'?0:(Number(r.percentage)||((Number(r.maxMark)>0&&r.score!==''&&r.score!=null)?(Number(r.score)/Number(r.maxMark))*100:0)) }));return {score:valid.length?Math.round(valid.reduce((sum,r)=>sum+r.pct,0)/valid.length):0,total:valid.length,positive:valid.filter(r=>r.pct>=50).length};} const valid=records.filter(r=>validStatus(r.status)); return {score:pct(valid.filter(r=>positive(metric,r.status)).length,valid.length),total:valid.length,positive:valid.filter(r=>positive(metric,r.status)).length}; }
   function metricPerformance(personId,metric,from='',to='') { return metricPerformanceFromRecords(metric,db[metric].filter(r=>r.personId===personId&&dateWithin(recordDate(metric,r),from,to))); }
 
   function aggregatePerformance(personIds,from='',to='') {
@@ -351,30 +426,32 @@
     if(!$('#filterCell')) return;
     const f=dashboardFilters(), people=dashboardPeople(), perf=aggregatePerformance(people.map(p=>p.id),f.from,f.to);
     const scopePerson=f.worker!=='all'?personById(f.worker):null;
-    const scope = scopePerson ? `${scopePerson.name} • ${scopePerson.cell}` : f.cell!=='all' ? `${f.cell} • ${people.length} workers` : f.q ? `Search: “${f.q}” • ${people.length} workers` : `Whole Theology • ${people.length} workers`;
+    const scope = scopePerson ? `${scopePerson.name} • ${scopePerson.cell} • ${scopePerson.duty||'No duty'}` : f.cell!=='all' ? `${f.cell} • ${people.length} workers` : f.q ? `Search: “${f.q}” • ${people.length} workers` : `Whole Theology • ${people.length} workers`;
     $('#scopeBanner').innerHTML=`<span>✦</span><strong>${esc(scope)}</strong><span>${f.from||'All dates'} → ${f.to||'Latest'}</span>`;
     const cards=[
       ['Overall',perf.overall,perf.totalRecords?`${perf.totalRecords} measured records`:'No recorded activity'],
       ['Education',perf.education.score,`${perf.education.total} records`],
       ['Service',perf.service.score,`${perf.service.total} records`],
       ['Cleaning',perf.cleaning.score,`${perf.cleaning.total} records`],
+      ['Exams',perf.exam.score,`${perf.exam.total} exam results`],
       ['Tithe & Offering',perf.finance.score,`${perf.finance.total} monthly records`],
       ['Workers',people.length, f.cell==='all'?'Theology view':f.cell]
     ];
-    $('#kpiGrid').innerHTML=cards.map((c,i)=>{const metricTotal=i===0?perf.totalRecords:i===1?perf.education.total:i===2?perf.service.total:i===3?perf.cleaning.total:i===4?perf.finance.total:1;const shown=i===5?c[1]:(metricTotal?c[1]+'%':'—');return `<div class="kpi-card"><div class="kpi-label">${esc(c[0])}</div><div class="kpi-value">${shown}</div><div class="kpi-sub">${esc(c[2])}</div>${i<5?`<div class="progress-mini"><span style="width:${metricTotal?c[1]:0}%"></span></div>`:''}</div>`;}).join('');
+    const totals=[perf.totalRecords,perf.education.total,perf.service.total,perf.cleaning.total,perf.exam.total,perf.finance.total,1];
+    $('#kpiGrid').innerHTML=cards.map((c,i)=>{const metricTotal=totals[i];const shown=i===6?c[1]:(metricTotal?c[1]+'%':'—');return `<div class="kpi-card"><div class="kpi-label">${esc(c[0])}</div><div class="kpi-value">${shown}</div><div class="kpi-sub">${esc(c[2])}</div>${i<6?`<div class="progress-mini"><span style="width:${metricTotal?c[1]:0}%"></span></div>`:''}</div>`;}).join('');
     renderFollowUp(people,f.from,f.to);
     renderDashboardCharts(people,f.from,f.to);
   }
 
   function renderFollowUp(people,from,to) {
     const rows=people.map(p=>({p,perf:personPerformance(p.id,from,to)})).filter(x=>x.perf.hasData).sort((a,b)=>a.perf.overall-b.perf.overall).slice(0,10);
-    $('#followUpBody').innerHTML=rows.length?rows.map(x=>`<tr><td><div class="worker-cell"><div class="avatar">${initials(x.p.name)}</div><strong>${esc(x.p.name)}</strong></div></td><td>${esc(x.p.cell)}</td>${METRICS.map(m=>`<td>${x.perf[m].total?x.perf[m].score+'%':'—'}</td>`).join('')}<td><span class="performance-chip ${scoreClass(x.perf.overall)}">${x.perf.overall}%</span></td></tr>`).join(''):emptyRow(7,'No performance data in this period.');
+    $('#followUpBody').innerHTML=rows.length?rows.map(x=>`<tr><td><div class="worker-cell"><div class="avatar">${initials(x.p.name)}</div><strong>${esc(x.p.name)}</strong></div></td><td>${esc(x.p.cell)}</td><td>${esc(x.p.duty||'—')}</td>${METRICS.map(m=>`<td>${x.perf[m].total?x.perf[m].score+'%':'—'}</td>`).join('')}<td><span class="performance-chip ${scoreClass(x.perf.overall)}">${x.perf.overall}%</span></td></tr>`).join(''):emptyRow(9,'No performance data in this period.');
   }
 
   function renderDashboardCharts(people,from,to) {
     if(typeof Chart==='undefined') return;
     const perf=aggregatePerformance(people.map(p=>p.id),from,to);
-    makeChart('categoryChart','bar',{labels:['Education','Service','Cleaning','Tithe & Offering'],datasets:[{label:'Performance %',data:METRICS.map(m=>perf[m].score),backgroundColor:['#8e72d8','#5d8fc7','#d86179','#4b9c87'],borderRadius:8}]},{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}});
+    makeChart('categoryChart','bar',{labels:METRICS.map(metricLabel),datasets:[{label:'Performance %',data:METRICS.map(m=>perf[m].score),backgroundColor:['#8e72d8','#5d8fc7','#d86179','#d3a33f','#4b9c87'],borderRadius:8}]},{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}});
 
     const weeks=lastWeeks(8,to||today());
     const weekly=weeks.map(w=>aggregatePerformance(people.map(p=>p.id),w.start,w.end));
@@ -409,22 +486,22 @@
     const view=$('#reportView').value, from=$('#reportFrom').value, to=$('#reportTo').value, cell=$('#reportCell').value, worker=$('#reportWorker').value;
     let people=activePeople().filter(p=>(cell==='all'||p.cell===cell)&&(worker==='all'||p.id===worker));
     if(view==='workers') {
-      reportRowsCache=people.map(p=>{const perf=personPerformance(p.id,from,to);return{Worker:p.name,Cell:p.cell,Education:perf.education.total?perf.education.score:'',Service:perf.service.total?perf.service.score:'',Cleaning:perf.cleaning.total?perf.cleaning.score:'','Tithe & Offering':perf.finance.total?perf.finance.score:'',Overall:perf.hasData?perf.overall:'',Records:perf.totalRecords};}).sort((a,b)=>(b.Overall||-1)-(a.Overall||-1));
-      $('#reportHead').innerHTML='<tr><th>Worker</th><th>Cell</th><th>Education</th><th>Service</th><th>Cleaning</th><th>Tithe & Offering</th><th>Overall</th><th>Records</th></tr>';
-      $('#reportBody').innerHTML=reportRowsCache.length?reportRowsCache.map(r=>`<tr><td>${esc(r.Worker)}</td><td>${esc(r.Cell)}</td><td>${fmtScore(r.Education)}</td><td>${fmtScore(r.Service)}</td><td>${fmtScore(r.Cleaning)}</td><td>${fmtScore(r['Tithe & Offering'])}</td><td>${r.Overall===''?'—':`<span class="performance-chip ${scoreClass(r.Overall)}">${r.Overall}%</span>`}</td><td>${r.Records}</td></tr>`).join(''):emptyRow(8,'No workers match this filter.');
+      reportRowsCache=people.map(p=>{const perf=personPerformance(p.id,from,to);return{Worker:p.name,Cell:p.cell,Duty:p.duty||'',Education:perf.education.total?perf.education.score:'',Service:perf.service.total?perf.service.score:'',Cleaning:perf.cleaning.total?perf.cleaning.score:'',Exams:perf.exam.total?perf.exam.score:'','Tithe & Offering':perf.finance.total?perf.finance.score:'',Overall:perf.hasData?perf.overall:'',Records:perf.totalRecords};}).sort((a,b)=>(b.Overall||-1)-(a.Overall||-1));
+      $('#reportHead').innerHTML='<tr><th>Worker</th><th>Cell</th><th>Duty</th><th>Education</th><th>Service</th><th>Cleaning</th><th>Exams</th><th>Tithe & Offering</th><th>Overall</th><th>Records</th></tr>';
+      $('#reportBody').innerHTML=reportRowsCache.length?reportRowsCache.map(r=>`<tr><td>${esc(r.Worker)}</td><td>${esc(r.Cell)}</td><td>${esc(r.Duty||'—')}</td><td>${fmtScore(r.Education)}</td><td>${fmtScore(r.Service)}</td><td>${fmtScore(r.Cleaning)}</td><td>${fmtScore(r.Exams)}</td><td>${fmtScore(r['Tithe & Offering'])}</td><td>${r.Overall===''?'—':`<span class="performance-chip ${scoreClass(r.Overall)}">${r.Overall}%</span>`}</td><td>${r.Records}</td></tr>`).join(''):emptyRow(10,'No workers match this filter.');
       const top=reportRowsCache.filter(r=>r.Overall!=='').slice(0,20).reverse(); makeChart('reportChart','bar',{labels:top.map(r=>shortName(r.Worker)),datasets:[{label:'Overall %',data:top.map(r=>r.Overall),backgroundColor:'#9a77d5',borderRadius:7}]},{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}});
     } else if(view==='cells') {
       const cells=(cell==='all'?cellNames():[cell]);
-      reportRowsCache=cells.map(c=>{const ids=people.filter(p=>p.cell===c).map(p=>p.id),perf=aggregatePerformance(ids,from,to);return{Cell:c,Workers:ids.length,Education:perf.education.total?perf.education.score:'',Service:perf.service.total?perf.service.score:'',Cleaning:perf.cleaning.total?perf.cleaning.score:'','Tithe & Offering':perf.finance.total?perf.finance.score:'',Overall:perf.hasData?perf.overall:'',Records:perf.totalRecords};});
-      $('#reportHead').innerHTML='<tr><th>Cell</th><th>Workers</th><th>Education</th><th>Service</th><th>Cleaning</th><th>Tithe & Offering</th><th>Overall</th><th>Records</th></tr>';
-      $('#reportBody').innerHTML=reportRowsCache.length?reportRowsCache.map(r=>`<tr><td><strong>${esc(r.Cell)}</strong></td><td>${r.Workers}</td><td>${fmtScore(r.Education)}</td><td>${fmtScore(r.Service)}</td><td>${fmtScore(r.Cleaning)}</td><td>${fmtScore(r['Tithe & Offering'])}</td><td>${r.Overall===''?'—':`<span class="performance-chip ${scoreClass(r.Overall)}">${r.Overall}%</span>`}</td><td>${r.Records}</td></tr>`).join(''):emptyRow(8);
+      reportRowsCache=cells.map(c=>{const ids=people.filter(p=>p.cell===c).map(p=>p.id),perf=aggregatePerformance(ids,from,to);return{Cell:c,Workers:ids.length,Education:perf.education.total?perf.education.score:'',Service:perf.service.total?perf.service.score:'',Cleaning:perf.cleaning.total?perf.cleaning.score:'',Exams:perf.exam.total?perf.exam.score:'','Tithe & Offering':perf.finance.total?perf.finance.score:'',Overall:perf.hasData?perf.overall:'',Records:perf.totalRecords};});
+      $('#reportHead').innerHTML='<tr><th>Cell</th><th>Workers</th><th>Education</th><th>Service</th><th>Cleaning</th><th>Exams</th><th>Tithe & Offering</th><th>Overall</th><th>Records</th></tr>';
+      $('#reportBody').innerHTML=reportRowsCache.length?reportRowsCache.map(r=>`<tr><td><strong>${esc(r.Cell)}</strong></td><td>${r.Workers}</td><td>${fmtScore(r.Education)}</td><td>${fmtScore(r.Service)}</td><td>${fmtScore(r.Cleaning)}</td><td>${fmtScore(r.Exams)}</td><td>${fmtScore(r['Tithe & Offering'])}</td><td>${r.Overall===''?'—':`<span class="performance-chip ${scoreClass(r.Overall)}">${r.Overall}%</span>`}</td><td>${r.Records}</td></tr>`).join(''):emptyRow(9);
       makeChart('reportChart','bar',{labels:reportRowsCache.map(r=>r.Cell),datasets:[{label:'Overall %',data:reportRowsCache.map(r=>r.Overall||0),backgroundColor:'#6c99c7',borderRadius:8}]},{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}});
     } else {
       const ids=new Set(people.map(p=>p.id));
       reportRowsCache=allFlatRecords().filter(r=>ids.has(r.personId)&&dateWithin(r.sortDate,from,to));
       $('#reportHead').innerHTML='<tr><th>Date</th><th>Worker</th><th>Cell</th><th>Metric</th><th>Detail</th><th>Status</th><th>Notes</th></tr>';
       $('#reportBody').innerHTML=reportRowsCache.length?reportRowsCache.slice(0,1500).map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.person)}</td><td>${esc(r.cell)}</td><td>${esc(r.metricLabel)}</td><td>${esc(r.detail)}</td><td>${esc(r.status||'—')}</td><td>${esc(r.note||'—')}</td></tr>`).join(''):emptyRow(7,'No records match this period.');
-      const counts=METRICS.map(m=>reportRowsCache.filter(r=>r.metric===m).length); makeChart('reportChart','bar',{labels:METRICS.map(metricLabel),datasets:[{label:'Records',data:counts,backgroundColor:['#8e72d8','#5d8fc7','#d86179','#4b9c87'],borderRadius:8}]},{plugins:{legend:{display:false}}});
+      const counts=METRICS.map(m=>reportRowsCache.filter(r=>r.metric===m).length); makeChart('reportChart','bar',{labels:METRICS.map(metricLabel),datasets:[{label:'Records',data:counts,backgroundColor:['#8e72d8','#5d8fc7','#d86179','#d3a33f','#4b9c87'],borderRadius:8}]},{plugins:{legend:{display:false}}});
     }
     $('#reportCount').textContent=`${reportRowsCache.length} ${view==='records'?'records':'rows'} • ${from||'All dates'} to ${to||'latest'}`;
   }
@@ -433,17 +510,18 @@
 
   function allFlatRecords() {
     const rows=[];
-    ['education','service','cleaning'].forEach(metric=>db[metric].forEach(r=>{const p=personById(r.personId);rows.push({metric,metricLabel:metricLabel(metric),id:r.id,personId:r.personId,sortDate:r.date||'',date:r.date||'',person:p.name,cell:p.cell,detail:r.session||'',status:r.status||'',note:r.note||'',raw:r});}));
-    db.finance.forEach(r=>{const p=personById(r.personId);rows.push({metric:'finance',metricLabel:'Tithe & Offering',id:r.id,personId:r.personId,sortDate:`${r.month}-01`,date:r.month,person:p.name,cell:p.cell,detail:r.amount!==''&&r.amount!=null?`Amount: R${r.amount}`:'Monthly record',status:r.status||'',note:r.note||'',raw:r});});
+    ['education','service','cleaning'].forEach(metric=>db[metric].forEach(r=>{const p=personById(r.personId);rows.push({metric,metricLabel:metricLabel(metric),id:r.id,personId:r.personId,sortDate:r.date||'',date:r.date||'',person:p.name,cell:p.cell,duty:p.duty||'',detail:r.session||'',status:r.status||'',note:r.note||'',raw:r});}));
+    db.exam.forEach(r=>{const p=personById(r.personId);const scoreDetail=r.status==='Written'?`${r.examName||'Exam'} • ${r.score}/${r.maxMark} (${Math.round(Number(r.percentage)||0)}%)`:`${r.examName||'Exam'} • ${r.status||'Not recorded'}`;rows.push({metric:'exam',metricLabel:'Exams',id:r.id,personId:r.personId,sortDate:r.date||'',date:r.date||'',person:p.name,cell:p.cell,duty:p.duty||'',detail:scoreDetail,status:r.status||'',note:r.note||'',raw:r});});
+    db.finance.forEach(r=>{const p=personById(r.personId);rows.push({metric:'finance',metricLabel:'Tithe & Offering',id:r.id,personId:r.personId,sortDate:`${r.month}-01`,date:r.month,person:p.name,cell:p.cell,duty:p.duty||'',detail:'Monthly record',status:r.status||'',note:r.note||'',raw:r});});
     return rows.sort((a,b)=>b.sortDate.localeCompare(a.sortDate)||a.person.localeCompare(b.person));
   }
 
   function renderRecords() {
     if(!$('#recordsBody')) return;
     const metric=$('#recordsMetric').value, from=$('#recordsFrom').value, to=$('#recordsTo').value, cell=$('#recordsCell').value, q=$('#recordsSearch').value.toLowerCase();
-    visibleRecordsCache=allFlatRecords().filter(x=>(metric==='all'||x.metric===metric)&&(cell==='all'||x.cell===cell)&&dateWithin(x.sortDate,from,to)&&(!q||`${x.person} ${x.cell} ${x.metricLabel} ${x.status} ${x.detail} ${x.note}`.toLowerCase().includes(q)));
+    visibleRecordsCache=allFlatRecords().filter(x=>(metric==='all'||x.metric===metric)&&(cell==='all'||x.cell===cell)&&dateWithin(x.sortDate,from,to)&&(!q||`${x.person} ${x.cell} ${x.duty||''} ${x.metricLabel} ${x.status} ${x.detail} ${x.note}`.toLowerCase().includes(q)));
     $('#recordsCount').textContent=`${visibleRecordsCache.length} filtered record${visibleRecordsCache.length===1?'':'s'}`;
-    $('#recordsBody').innerHTML=visibleRecordsCache.length?visibleRecordsCache.slice(0,1500).map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.person)}</td><td>${esc(x.cell)}</td><td><span class="pill ${x.metric==='finance'?'mint':x.metric==='service'?'blue':x.metric==='cleaning'?'rose':'lavender'}">${esc(x.metricLabel)}</span></td><td>${esc(x.detail)}</td><td>${esc(x.status||'—')}</td><td>${esc(x.note||'—')}</td><td>${canDeleteRecords()?`<button class="delete-btn" data-delete="${esc(x.id)}" data-metric="${esc(x.metric)}" title="Delete">×</button>`:''}</td></tr>`).join(''):emptyRow(8,'No records match these filters.');
+    $('#recordsBody').innerHTML=visibleRecordsCache.length?visibleRecordsCache.slice(0,1500).map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.person)}</td><td>${esc(x.cell)}</td><td><span class="pill ${x.metric==='finance'?'mint':x.metric==='service'?'blue':x.metric==='cleaning'?'rose':x.metric==='exam'?'gold':'lavender'}">${esc(x.metricLabel)}</span></td><td>${esc(x.detail)}</td><td>${esc(x.status||'—')}</td><td>${esc(x.note||'—')}</td><td>${canDeleteRecords()?`<button class="delete-btn" data-delete="${esc(x.id)}" data-metric="${esc(x.metric)}" title="Delete">×</button>`:''}</td></tr>`).join(''):emptyRow(8,'No records match these filters.');
   }
 
   async function deleteRecord(metric,id) {
@@ -454,7 +532,7 @@
   }
 
   function exportBackup() {
-    const blob=new Blob([JSON.stringify({version:2,exportedAt:new Date().toISOString(),data:db},null,2)],{type:'application/json'});
+    const blob=new Blob([JSON.stringify({version:3,exportedAt:new Date().toISOString(),data:db},null,2)],{type:'application/json'});
     downloadBlob(blob,`MOT-Theology-backup-${today()}.json`); toast('JSON backup exported.','success');
   }
 
@@ -478,13 +556,13 @@
     if(!rows.length) return toast('There is no data to export.','error');
     const normalized=rows.map(r=>{ if(r.metric) return flatExportRow(r); return r; }); const headers=Object.keys(normalized[0]); const lines=[headers,...normalized.map(r=>headers.map(h=>r[h]??''))].map(row=>row.map(csvCell).join(',')); downloadBlob(new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8'}),name); toast('CSV exported.','success');
   }
-  function flatExportRow(r) { return {Date:r.date,Worker:r.person,Cell:r.cell,Metric:r.metricLabel,Detail:r.detail,Status:r.status,Notes:r.note}; }
+  function flatExportRow(r) { return {Date:r.date,Worker:r.person,Cell:r.cell,Duty:r.duty||'',Metric:r.metricLabel,Detail:r.detail,Status:r.status,Notes:r.note}; }
   function csvCell(v) { const s=String(v??''); return /[",\n]/.test(s)?`"${s.replaceAll('"','""')}"`:s; }
 
   function exportExcelWorkbook(filteredReport=false) {
     if(typeof XLSX==='undefined') return toast('Excel library did not load. Check your internet connection and refresh.','error');
     const wb=XLSX.utils.book_new();
-    const peopleRows=(filteredReport?reportFilteredPeople():db.people).map(p=>({ID:p.id,Name:p.name,Cell:p.cell,Active:p.active!==false?'Yes':'No'}));
+    const peopleRows=(filteredReport?reportFilteredPeople():db.people).map(p=>({ID:p.id,Name:p.name,Cell:p.cell,Duty:p.duty||'',Active:p.active!==false?'Yes':'No'}));
     appendSheet(wb,'Workers',peopleRows);
     const ids=new Set(peopleRows.map(r=>r.ID));
     const from=filteredReport?$('#reportFrom').value:'', to=filteredReport?$('#reportTo').value:'';
@@ -492,8 +570,9 @@
     appendSheet(wb,'Education',db.education.filter(r=>recordFilter('education',r)).map(r=>attendanceExcelRow('education',r)));
     appendSheet(wb,'Service Attendance',db.service.filter(r=>recordFilter('service',r)).map(r=>attendanceExcelRow('service',r)));
     appendSheet(wb,'Cleaning',db.cleaning.filter(r=>recordFilter('cleaning',r)).map(r=>attendanceExcelRow('cleaning',r)));
+    appendSheet(wb,'Exam Results',db.exam.filter(r=>recordFilter('exam',r)).map(examExcelRow));
     appendSheet(wb,'Tithe Offering',db.finance.filter(r=>recordFilter('finance',r)).map(financeExcelRow));
-    const summary=peopleRows.map(pr=>{const perf=personPerformance(pr.ID,from,to);return{Worker:pr.Name,Cell:pr.Cell,'Education %':perf.education.total?perf.education.score:'','Service %':perf.service.total?perf.service.score:'','Cleaning %':perf.cleaning.total?perf.cleaning.score:'','Tithe & Offering %':perf.finance.total?perf.finance.score:'','Overall %':perf.hasData?perf.overall:'','Measured Records':perf.totalRecords};});
+    const summary=peopleRows.map(pr=>{const perf=personPerformance(pr.ID,from,to);return{Worker:pr.Name,Cell:pr.Cell,Duty:pr.Duty||'','Education %':perf.education.total?perf.education.score:'','Service %':perf.service.total?perf.service.score:'','Cleaning %':perf.cleaning.total?perf.cleaning.score:'','Exams %':perf.exam.total?perf.exam.score:'','Tithe & Offering %':perf.finance.total?perf.finance.score:'','Overall %':perf.hasData?perf.overall:'','Measured Records':perf.totalRecords};});
     appendSheet(wb,'Performance Summary',summary);
     XLSX.writeFile(wb,`MOT-Theology-${filteredReport?'filtered-report':'full-data'}-${today()}.xlsx`); toast('Excel workbook exported.','success');
   }
@@ -504,8 +583,9 @@
   }
 
   function reportFilteredPeople() { const cell=$('#reportCell').value,worker=$('#reportWorker').value; return activePeople().filter(p=>(cell==='all'||p.cell===cell)&&(worker==='all'||p.id===worker)); }
-  function attendanceExcelRow(metric,r) { const p=personById(r.personId); return {'Record ID':r.id,'Worker ID':r.personId,Worker:p.name,Cell:p.cell,Date:r.date,Session:r.session,Status:r.status,Notes:r.note||'','Updated At':r.updatedAt||''}; }
-  function financeExcelRow(r) { const p=personById(r.personId); return {'Record ID':r.id,'Worker ID':r.personId,Worker:p.name,Cell:p.cell,Month:r.month,Status:r.status,Amount:r.amount??'',Notes:r.note||'','Updated At':r.updatedAt||''}; }
+  function attendanceExcelRow(metric,r) { const p=personById(r.personId); return {'Record ID':r.id,'Worker ID':r.personId,Worker:p.name,Cell:p.cell,Duty:p.duty||'',Date:r.date,Session:r.session,Status:r.status,Notes:r.note||'','Updated At':r.updatedAt||''}; }
+  function examExcelRow(r) { const p=personById(r.personId); return {'Record ID':r.id,'Worker ID':r.personId,Worker:p.name,Cell:p.cell,Duty:p.duty||'',Date:r.date,'Exam Name':r.examName,'Maximum Mark':r.maxMark,Status:r.status,Score:r.score??'',Percentage:r.percentage??'',Notes:r.note||'','Updated At':r.updatedAt||''}; }
+  function financeExcelRow(r) { const p=personById(r.personId); return {'Record ID':r.id,'Worker ID':r.personId,Worker:p.name,Cell:p.cell,Duty:p.duty||'',Month:r.month,Status:r.status,Amount:r.amount??'',Notes:r.note||'','Updated At':r.updatedAt||''}; }
   function appendSheet(wb,name,rows) { const safeRows=rows.length?rows:[{Message:'No data'}]; const ws=XLSX.utils.json_to_sheet(safeRows); ws['!cols']=Object.keys(safeRows[0]).map(k=>({wch:Math.min(32,Math.max(12,k.length+2))})); XLSX.utils.book_append_sheet(wb,ws,name.slice(0,31)); }
 
   function importExcelWorkbook(e) {
@@ -513,11 +593,12 @@
     const reader=new FileReader();
     reader.onload=async()=>{try{
       const wb=XLSX.read(reader.result,{type:'array'}); const incoming=emptyDB();
-      const workers=sheetRows(wb,'Workers'); if(workers.length&&workers[0].Message!=='No data') incoming.people=workers.map((r,i)=>({id:String(r.ID||r['Worker ID']||`P${i+1}`),name:String(r.Name||r.Worker||`Worker ${i+1}`),cell:String(r.Cell||'Cell 1'),active:String(r.Active||'Yes').toLowerCase()!=='no',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}));
+      const workers=sheetRows(wb,'Workers'); if(workers.length&&workers[0].Message!=='No data') incoming.people=workers.map((r,i)=>({id:String(r.ID||r['Worker ID']||`P${i+1}`),name:String(r.Name||r.Worker||`Worker ${i+1}`),cell:String(r.Cell||'Cell 01'),duty:String(r.Duty||'JDSN'),active:String(r.Active||'Yes').toLowerCase()!=='no',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}));
       const knownIds=new Set(incoming.people.map(p=>p.id));
       incoming.education=parseAttendanceSheet(sheetRows(wb,'Education'),knownIds,'edu');
       incoming.service=parseAttendanceSheet(sheetRows(wb,'Service Attendance'),knownIds,'svc');
       incoming.cleaning=parseAttendanceSheet(sheetRows(wb,'Cleaning'),knownIds,'cln');
+      incoming.exam=parseExamSheet(sheetRows(wb,'Exam Results'),knownIds);
       incoming.finance=parseFinanceSheet(sheetRows(wb,'Tithe Offering'),knownIds);
       db=incoming; saveLocal(); renderAll(); await pushFullDatabase(); toast('Excel workbook imported to the shared database.','success');
     }catch(err){console.error(err);toast('Could not import this Excel workbook: '+err.message,'error');}}
@@ -525,6 +606,7 @@
   }
   function sheetRows(wb,name) { const ws=wb.Sheets[name]; return ws?XLSX.utils.sheet_to_json(ws,{defval:''}):[]; }
   function parseAttendanceSheet(rows,knownIds,prefix) { return rows.filter(r=>r['Worker ID']&&knownIds.has(String(r['Worker ID']))&&r.Date).map(r=>({id:String(r['Record ID']||uid(prefix)),personId:String(r['Worker ID']),date:excelDateString(r.Date),session:String(r.Session||''),status:String(r.Status||''),note:String(r.Notes||''),updatedAt:String(r['Updated At']||new Date().toISOString())})); }
+  function parseExamSheet(rows,knownIds) { return rows.filter(r=>r['Worker ID']&&knownIds.has(String(r['Worker ID']))&&r.Date&&r['Exam Name']).map(r=>({id:String(r['Record ID']||uid('exm')),personId:String(r['Worker ID']),date:excelDateString(r.Date),examName:String(r['Exam Name']||''),maxMark:Number(r['Maximum Mark']||100),status:String(r.Status||''),score:r.Score===''?'':Number(r.Score),percentage:r.Percentage===''?'':Number(r.Percentage),note:String(r.Notes||''),updatedAt:String(r['Updated At']||new Date().toISOString())})); }
   function parseFinanceSheet(rows,knownIds) { return rows.filter(r=>r['Worker ID']&&knownIds.has(String(r['Worker ID']))&&r.Month).map(r=>({id:String(r['Record ID']||uid('fin')),personId:String(r['Worker ID']),month:String(r.Month).slice(0,7),status:String(r.Status||''),amount:r.Amount===''?'':Number(r.Amount),note:String(r.Notes||''),updatedAt:String(r['Updated At']||new Date().toISOString())})); }
   function excelDateString(v) { if(typeof v==='number'){const d=XLSX.SSF.parse_date_code(v);return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;} return String(v).slice(0,10); }
 
@@ -580,7 +662,7 @@
     $$('.admin-only').forEach(el=>el.classList.toggle('hidden',role!=='admin'));
     $$('.nav-item').forEach(el=>{
       const v=el.dataset.view;
-      const hide = role==='worker' && ['education','service','cleaning','finance','people'].includes(v) || role==='cell_leader' && v==='people';
+      const hide = role==='worker' && ['education','service','cleaning','exam','finance','people'].includes(v) || role==='cell_leader' && v==='people';
       el.classList.toggle('hidden',hide);
     });
     const display=u.displayName||u.username;
@@ -596,7 +678,7 @@
     const cell=$('#accessCell'), person=$('#accessPerson');
     const cv=cell.value, pv=person.value;
     cell.innerHTML='<option value="">Not restricted to a cell</option>'+cells.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
-    person.innerHTML='<option value="">No linked worker</option>'+activePeople().slice().sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${esc(p.id)}">${esc(p.name)} — ${esc(p.cell)}</option>`).join('');
+    person.innerHTML='<option value="">No linked worker</option>'+activePeople().slice().sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${esc(p.id)}">${esc(p.name)} — ${esc(p.cell)} • ${esc(p.duty||'')}</option>`).join('');
     if([...cell.options].some(o=>o.value===cv)) cell.value=cv; if([...person.options].some(o=>o.value===pv)) person.value=pv;
   }
 
