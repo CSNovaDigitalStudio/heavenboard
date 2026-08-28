@@ -12,6 +12,10 @@
   };
 
   const DEFAULT_PEOPLE = [
+    {id:'C00-01',name:'Lungelo Dlamini',cell:'Cell 00',duty:'MOT BJN'},
+    {id:'C04-04',name:'Brian Zuma',cell:'Cell 00',duty:'CMN'},
+    {id:'C00-03',name:'Nokwanda van Wyk',cell:'Cell 00',duty:'SMN'},
+    {id:'C00-04',name:'Cebile Miya',cell:'Cell 00',duty:'HGN'},
     {id:'C01-05',name:'Rafeeq Baatjies',cell:'Cell 01',duty:'GSN'},
     {id:'C01-01',name:'Ngo JDSN',cell:'Cell 01',duty:'HJDSN'},
     {id:'C01-04',name:'Mfundo JDSN',cell:'Cell 01',duty:'JDSN'},
@@ -159,7 +163,7 @@
       $(`#${metric}Search`).addEventListener('input', () => renderEntry(metric));
       $(`#${metric}Cell`).addEventListener('change', () => renderEntry(metric));
     });
-    ['educationDate','educationSession','serviceDate','serviceSession','cleaningDate','cleaningSession','examDate','examName','examMaxMark','financeMonth'].forEach(id => {
+    ['educationDate','educationSession','serviceDate','serviceSession','cleaningDate','cleaningSession','examDate','examName','financeMonth'].forEach(id => {
       const metric = id.startsWith('education') ? 'education' : id.startsWith('service') ? 'service' : id.startsWith('cleaning') ? 'cleaning' : id.startsWith('exam') ? 'exam' : 'finance';
       $(`#${id}`).addEventListener('change', () => renderEntry(metric));
     });
@@ -217,6 +221,7 @@
     renderReports();
     renderRecords();
     $('#heroWorkerCount').textContent = `${activePeople().length} workers`;
+    if ($('#heroCellCount')) $('#heroCellCount').textContent = `Across ${cellNames().length} cells`;
   }
 
   function renderSelects() {
@@ -268,30 +273,15 @@
   }
 
   function renderExamEntry() {
-    const date=$('#examDate').value, examName=$('#examName').value.trim(), maxMark=Number($('#examMaxMark').value)||100, cell=$('#examCell').value, search=$('#examSearch').value;
+    const date=$('#examDate').value, examName=$('#examName').value.trim(), cell=$('#examCell').value, search=$('#examSearch').value;
     const rows=filteredRoster(cell,search), body=$('#examBody');
     body.innerHTML = rows.map((p,i)=>{
       const r=db.exam.find(x=>x.personId===p.id&&x.date===date&&String(x.examName||'')===examName)||{};
-      const shownPct=r.status==='Written'&&r.score!==''&&r.score!=null ? Math.round((Number(r.score)/Number(r.maxMark||maxMark))*100) : r.status==='Absent' ? 0 : '';
-      return `<tr data-person-id="${esc(p.id)}"><td>${i+1}</td><td><div class="worker-cell"><div class="avatar">${initials(p.name)}</div><div><strong>${esc(p.name)}</strong><small>${esc(p.id)}</small></div></div></td><td>${esc(p.cell)}</td><td><select class="status-select ${statusClass(r.status)}">${statusOptions(r.status,'exam')}</select></td><td><input class="amount-input exam-score" type="number" min="0" max="${esc(maxMark)}" step="0.01" value="${esc(r.score??'')}" placeholder="Mark"></td><td><span class="exam-percent ${shownPct!==''?'performance-chip '+scoreClass(shownPct):''}">${shownPct===''?'—':shownPct+'%'}</span></td><td><input class="note-input" type="text" value="${esc(r.note||'')}" placeholder="Optional note"></td></tr>`;
-    }).join('') || emptyRow(7);
+      return `<tr data-person-id="${esc(p.id)}"><td>${i+1}</td><td><div class="worker-cell"><div class="avatar">${initials(p.name)}</div><div><strong>${esc(p.name)}</strong><small>${esc(p.id)}</small></div></div></td><td>${esc(p.cell)}</td><td><select class="status-select ${statusClass(r.status)}">${statusOptions(r.status,'exam')}</select></td><td><input class="note-input" type="text" value="${esc(r.note||'')}" placeholder="Optional note"></td></tr>`;
+    }).join('') || emptyRow(5);
     bindStatusColors(body);
-    body.querySelectorAll('tr[data-person-id]').forEach(tr=>{
-      const refresh=()=>updateExamPercentRow(tr,maxMark);
-      tr.querySelector('.status-select')?.addEventListener('change',refresh);
-      tr.querySelector('.exam-score')?.addEventListener('input',refresh);
-    });
     const ids=new Set(rows.map(p=>p.id)); const saved=db.exam.filter(r=>ids.has(r.personId)&&r.date===date&&String(r.examName||'')===examName&&r.status).length;
-    $('#examSummary').innerHTML=`<span class="summary-chip"><span class="summary-dot good"></span>${saved} saved</span><span>${rows.length} workers shown</span><span>${esc(date||'Choose a date')} • ${esc(examName||'Name this exam')} • out of ${esc(maxMark)}</span>`;
-  }
-
-  function updateExamPercentRow(tr,maxMark) {
-    const status=tr.querySelector('.status-select')?.value||'', score=Number(tr.querySelector('.exam-score')?.value);
-    const el=tr.querySelector('.exam-percent'); if(!el) return;
-    let value='';
-    if(status==='Written' && Number.isFinite(score) && maxMark>0) value=Math.max(0,Math.min(100,Math.round((score/maxMark)*100)));
-    else if(status==='Absent') value=0;
-    el.textContent=value===''?'—':value+'%'; el.className='exam-percent'+(value===''?'':' performance-chip '+scoreClass(value));
+    $('#examSummary').innerHTML=`<span class="summary-chip"><span class="summary-dot good"></span>${saved} saved</span><span>${rows.length} workers shown</span><span>${esc(date||'Choose a date')} • ${esc(examName||'Name this exam')}</span>`;
   }
 
   function renderFinanceEntry() {
@@ -325,27 +315,18 @@
   }
 
   async function saveExamBatch() {
-    const date=$('#examDate').value, examName=$('#examName').value.trim(), maxMark=Number($('#examMaxMark').value);
+    const date=$('#examDate').value, examName=$('#examName').value.trim();
     if(!date) return toast('Please choose the exam date.','error');
     if(!examName) return toast('Please enter the exam name.','error');
-    if(!Number.isFinite(maxMark)||maxMark<=0) return toast('Maximum mark must be greater than 0.','error');
-    const records=[]; let problem='';
+    const records=[];
     $$('#examBody tr[data-person-id]').forEach(tr=>{
-      if(problem) return;
-      const personId=tr.dataset.personId, status=tr.querySelector('.status-select').value, rawScore=tr.querySelector('.exam-score').value, note=tr.querySelector('.note-input').value.trim();
+      const personId=tr.dataset.personId, status=tr.querySelector('.status-select').value, note=tr.querySelector('.note-input').value.trim();
       const old=db.exam.find(r=>r.personId===personId&&r.date===date&&String(r.examName||'')===examName);
-      if(!status && rawScore==='' && !note && !old) return;
-      let score=rawScore===''?'':Number(rawScore);
-      if(status==='Written' && score==='') { problem=`Enter a mark for ${personById(personId).name}, or change the exam status.`; return; }
-      if(score!=='' && (!Number.isFinite(score)||score<0||score>maxMark)) { problem=`${personById(personId).name}'s mark must be between 0 and ${maxMark}.`; return; }
-      if(status==='Absent') score=0;
-      if(status==='Excused' || !status) score='';
-      const percentage=status==='Written' ? Math.round((score/maxMark)*10000)/100 : status==='Absent' ? 0 : '';
-      records.push({id:old?.id||uid('exm'),personId,date,examName,maxMark,status,score,percentage,note,updatedAt:new Date().toISOString()});
+      if(!status && !note && !old) return;
+      records.push({id:old?.id||uid('exm'),personId,date,examName,maxMark:old?.maxMark??100,status,score:old?.score??'',percentage:old?.percentage??'',note,updatedAt:new Date().toISOString()});
     });
-    if(problem) return toast(problem,'error');
-    if(!records.length) return toast('No exam results were entered.','error');
-    upsertMany('exam',records,r=>`${r.personId}|${r.date}|${String(r.examName||'').toLowerCase()}`); saveLocal(); await syncSaved('exam',records); renderEntry('exam'); renderDashboard(); renderReports(); renderRecords(); toast(`Exam results saved for ${records.length} workers.`,'success');
+    if(!records.length) return toast('No exam records were entered.','error');
+    upsertMany('exam',records,r=>`${r.personId}|${r.date}|${String(r.examName||'').toLowerCase()}`); saveLocal(); await syncSaved('exam',records); renderEntry('exam'); renderDashboard(); renderReports(); renderRecords(); toast(`Exam records saved for ${records.length} workers.`,'success');
   }
 
   async function saveFinanceBatch() {
@@ -378,7 +359,7 @@
   }
 
   function cellOptions(current) { const known=[...new Set([...cellNames(),current].filter(Boolean))].sort(cellSort); return known.map(c=>`<option value="${esc(c)}" ${c===current?'selected':''}>${esc(c)}</option>`).join(''); }
-  function dutyOptions(current) { return ['GSN','HJDSN','JDSN','KSN'].map(d=>`<option value="${d}" ${d===current?'selected':''}>${d}</option>`).join(''); }
+  function dutyOptions(current) { return ['MOT BJN','CMN','SMN','HGN','GSN','HJDSN','JDSN','KSN'].map(d=>`<option value="${d}" ${d===current?'selected':''}>${d}</option>`).join(''); }
 
   function renderCellSummary() {
     const from=$('#filterFrom')?.value||'', to=$('#filterTo')?.value||today();
@@ -410,7 +391,7 @@
   }
 
   function filteredRecords(metric, people, from, to) { const ids=new Set(people.map(p=>p.id)); return db[metric].filter(r=>ids.has(r.personId)&&dateWithin(recordDate(metric,r),from,to)); }
-  function metricPerformanceFromRecords(metric, records) { if(metric==='exam'){const valid=records.filter(r=>r.status==='Written'||r.status==='Absent').map(r=>({ ...r, pct:r.status==='Absent'?0:(Number(r.percentage)||((Number(r.maxMark)>0&&r.score!==''&&r.score!=null)?(Number(r.score)/Number(r.maxMark))*100:0)) }));return {score:valid.length?Math.round(valid.reduce((sum,r)=>sum+r.pct,0)/valid.length):0,total:valid.length,positive:valid.filter(r=>r.pct>=50).length};} const valid=records.filter(r=>validStatus(r.status)); return {score:pct(valid.filter(r=>positive(metric,r.status)).length,valid.length),total:valid.length,positive:valid.filter(r=>positive(metric,r.status)).length}; }
+  function metricPerformanceFromRecords(metric, records) { if(metric==='exam'){const valid=records.filter(r=>r.status==='Written'||r.status==='Absent');return {score:pct(valid.filter(r=>r.status==='Written').length,valid.length),total:valid.length,positive:valid.filter(r=>r.status==='Written').length};} const valid=records.filter(r=>validStatus(r.status)); return {score:pct(valid.filter(r=>positive(metric,r.status)).length,valid.length),total:valid.length,positive:valid.filter(r=>positive(metric,r.status)).length}; }
   function metricPerformance(personId,metric,from='',to='') { return metricPerformanceFromRecords(metric,db[metric].filter(r=>r.personId===personId&&dateWithin(recordDate(metric,r),from,to))); }
 
   function aggregatePerformance(personIds,from='',to='') {
@@ -511,7 +492,7 @@
   function allFlatRecords() {
     const rows=[];
     ['education','service','cleaning'].forEach(metric=>db[metric].forEach(r=>{const p=personById(r.personId);rows.push({metric,metricLabel:metricLabel(metric),id:r.id,personId:r.personId,sortDate:r.date||'',date:r.date||'',person:p.name,cell:p.cell,duty:p.duty||'',detail:r.session||'',status:r.status||'',note:r.note||'',raw:r});}));
-    db.exam.forEach(r=>{const p=personById(r.personId);const scoreDetail=r.status==='Written'?`${r.examName||'Exam'} • ${r.score}/${r.maxMark} (${Math.round(Number(r.percentage)||0)}%)`:`${r.examName||'Exam'} • ${r.status||'Not recorded'}`;rows.push({metric:'exam',metricLabel:'Exams',id:r.id,personId:r.personId,sortDate:r.date||'',date:r.date||'',person:p.name,cell:p.cell,duty:p.duty||'',detail:scoreDetail,status:r.status||'',note:r.note||'',raw:r});});
+    db.exam.forEach(r=>{const p=personById(r.personId);const examDetail=`${r.examName||'Exam'} • ${r.status||'Not recorded'}`;rows.push({metric:'exam',metricLabel:'Exams',id:r.id,personId:r.personId,sortDate:r.date||'',date:r.date||'',person:p.name,cell:p.cell,duty:p.duty||'',detail:examDetail,status:r.status||'',note:r.note||'',raw:r});});
     db.finance.forEach(r=>{const p=personById(r.personId);rows.push({metric:'finance',metricLabel:'Tithe & Offering',id:r.id,personId:r.personId,sortDate:`${r.month}-01`,date:r.month,person:p.name,cell:p.cell,duty:p.duty||'',detail:'Monthly record',status:r.status||'',note:r.note||'',raw:r});});
     return rows.sort((a,b)=>b.sortDate.localeCompare(a.sortDate)||a.person.localeCompare(b.person));
   }
@@ -584,7 +565,7 @@
 
   function reportFilteredPeople() { const cell=$('#reportCell').value,worker=$('#reportWorker').value; return activePeople().filter(p=>(cell==='all'||p.cell===cell)&&(worker==='all'||p.id===worker)); }
   function attendanceExcelRow(metric,r) { const p=personById(r.personId); return {'Record ID':r.id,'Worker ID':r.personId,Worker:p.name,Cell:p.cell,Duty:p.duty||'',Date:r.date,Session:r.session,Status:r.status,Notes:r.note||'','Updated At':r.updatedAt||''}; }
-  function examExcelRow(r) { const p=personById(r.personId); return {'Record ID':r.id,'Worker ID':r.personId,Worker:p.name,Cell:p.cell,Duty:p.duty||'',Date:r.date,'Exam Name':r.examName,'Maximum Mark':r.maxMark,Status:r.status,Score:r.score??'',Percentage:r.percentage??'',Notes:r.note||'','Updated At':r.updatedAt||''}; }
+  function examExcelRow(r) { const p=personById(r.personId); return {'Record ID':r.id,'Worker ID':r.personId,Worker:p.name,Cell:p.cell,Duty:p.duty||'',Date:r.date,'Exam Name':r.examName,Status:r.status,Notes:r.note||'','Updated At':r.updatedAt||''}; }
   function financeExcelRow(r) { const p=personById(r.personId); return {'Record ID':r.id,'Worker ID':r.personId,Worker:p.name,Cell:p.cell,Duty:p.duty||'',Month:r.month,Status:r.status,Amount:r.amount??'',Notes:r.note||'','Updated At':r.updatedAt||''}; }
   function appendSheet(wb,name,rows) { const safeRows=rows.length?rows:[{Message:'No data'}]; const ws=XLSX.utils.json_to_sheet(safeRows); ws['!cols']=Object.keys(safeRows[0]).map(k=>({wch:Math.min(32,Math.max(12,k.length+2))})); XLSX.utils.book_append_sheet(wb,ws,name.slice(0,31)); }
 
@@ -617,6 +598,37 @@
 
   function downloadBlob(blob,name) { const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),500); }
 
+
+
+  function reconcileAdminRoster(cloudPeople) {
+    if(session?.user?.role !== 'admin' || !Array.isArray(cloudPeople)) return { people: cloudPeople, changed: false };
+    const now = new Date().toISOString();
+    const byId = new Map(cloudPeople.map(p => [p.id, p]));
+    const canonicalIds = new Set(DEFAULT_PEOPLE.map(p => p.id));
+    let changed = false;
+
+    const canonical = DEFAULT_PEOPLE.map(p => {
+      const old = byId.get(p.id) || {};
+      if(!byId.has(p.id) || old.name !== p.name || old.cell !== p.cell || old.duty !== p.duty || old.active === false) changed = true;
+      return {
+        ...old,
+        ...p,
+        active: true,
+        createdAt: old.createdAt || now,
+        updatedAt: (old.name !== p.name || old.cell !== p.cell || old.duty !== p.duty || old.active === false || !byId.has(p.id)) ? now : (old.updatedAt || now)
+      };
+    });
+
+    // Keep removed workers only as inactive so any historical records still resolve to a name.
+    const retired = cloudPeople.filter(p => !canonicalIds.has(p.id)).map(p => {
+      if(p.active !== false) changed = true;
+      return {...p, active:false, updatedAt:p.active !== false ? now : (p.updatedAt || now)};
+    });
+
+    if(cloudPeople.length !== canonical.length + retired.length) changed = true;
+    return { people: [...canonical, ...retired], changed };
+  }
+
   function updateConnectionUI(connected=true) {
     $('#connectionDot').classList.toggle('connected',connected);
     $('#connectionLabel').textContent=connected?'Google Sheets':'Offline';
@@ -643,7 +655,14 @@
     try{
       const data=await remoteCall({action:'getAll'});
       if(data.data){
-        db={...emptyDB(),...data.data}; METRICS.forEach(m=>{if(!Array.isArray(db[m]))db[m]=[]}); saveLocal(); renderAll(); updateConnectionUI(true);
+        const incoming={...data.data};
+        const rosterFix=reconcileAdminRoster(Array.isArray(incoming.people)?incoming.people:[]);
+        incoming.people=rosterFix.people;
+        db={...emptyDB(),...incoming}; METRICS.forEach(m=>{if(!Array.isArray(db[m]))db[m]=[]}); saveLocal(); renderAll(); updateConnectionUI(true);
+        if(rosterFix.changed && session?.user?.role==='admin') {
+          try { await remoteCall({action:'savePeople',people:db.people}); }
+          catch(e) { console.warn('Could not persist updated 31-worker roster:', e); }
+        }
         if($('#settingsStatus')) $('#settingsStatus').textContent=`Connected. Last synced ${new Date().toLocaleString('en-ZA')}.`;
         if(showMessage) toast('Synced with Google Sheets.','success');
         return true;

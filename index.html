@@ -85,8 +85,8 @@
             </div>
             <div class="hero-verse">
               <span class="sparkle">✦</span>
-              <strong id="heroWorkerCount">31 workers</strong>
-              <small>Across 7 cells</small>
+              <strong id="heroWorkerCount">35 workers</strong>
+              <small id="heroCellCount">Across 8 cells</small>
             </div>
           </div>
 
@@ -205,21 +205,20 @@
 
         <section class="view" id="view-exam">
           <div class="page-intro split">
-            <div><span class="pill gold">Usually every 2 weeks</span><h3>Exams</h3><p>Record each exam result by date and exam name. Written exams use the percentage score; absent counts as 0%; excused is excluded.</p></div>
+            <div><span class="pill gold">Usually every 2 weeks</span><h3>Exams</h3><p>Record whether each worker wrote the exam, was absent, or was excused.</p></div>
             <div class="schedule-stack"><span>Approximately fortnightly</span></div>
           </div>
           <div class="entry-panel">
             <div class="entry-toolbar">
               <div class="filter-group"><label>Date</label><input type="date" id="examDate"></div>
               <div class="filter-group"><label>Exam name</label><input type="text" id="examName" placeholder="e.g. Exam 01"></div>
-              <div class="filter-group"><label>Maximum mark</label><input type="number" id="examMaxMark" min="1" step="1" value="100"></div>
               <div class="filter-group"><label>Cell</label><select id="examCell"><option value="all">All cells</option></select></div>
               <div class="filter-group grow"><label>Find worker</label><input type="search" id="examSearch" placeholder="Name, duty or cell..."></div>
               <button class="soft-button" id="examMarkAll">Mark all written</button>
               <button class="primary-button" id="saveExam">Save exam</button>
             </div>
             <div class="entry-summary" id="examSummary"></div>
-            <div class="table-scroll"><table class="entry-table"><thead><tr><th>#</th><th>Worker</th><th>Cell</th><th>Status</th><th>Mark</th><th>Percentage</th><th>Notes</th></tr></thead><tbody id="examBody"></tbody></table></div>
+            <div class="table-scroll"><table class="entry-table"><thead><tr><th>#</th><th>Worker</th><th>Cell</th><th>Status</th><th>Notes</th></tr></thead><tbody id="examBody"></tbody></table></div>
           </div>
         </section>
 
@@ -243,7 +242,7 @@
 
         <section class="view" id="view-people">
           <div class="page-intro split">
-            <div><span class="pill gold">Actual Theology structure</span><h3>Workers & Cells</h3><p>31 workers arranged in 7 cells. You can edit names, cell assignment, duty and active status.</p></div>
+            <div><span class="pill gold">Actual Theology structure</span><h3>Workers & Cells</h3><p>35 workers arranged in 8 cells (Cell 00–Cell 07). You can edit names, cell assignment, duty and active status.</p></div>
             <div class="button-row"><button class="soft-button" id="restoreStructure">Restore supplied structure</button><button class="primary-button" id="savePeople">Save roster</button></div>
           </div>
           <div class="cell-summary-grid" id="cellSummaryGrid"></div>
@@ -344,6 +343,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="app.js"></script>
+  <script src="app.js?v=31-roster-fix-2"></script>
 </body>
 </html>
